@@ -1,0 +1,1061 @@
+/**
+ * Cookie — widget styles for the ProcessWire "Cookie" module.
+ *
+ * Every color/size/font comes from CSS custom properties set on .pwcm-root
+ * by the module (see Cookie::buildCssVars), so the ProcessCookie builder can
+ * restyle the widget live without touching this file.
+ *
+ * When the CSS prefix is customized, "pwcm" is rewritten on output.
+ */
+
+.pwcm-root,
+.pwcm-ph {
+	--pwcm-bg: #ffffff;
+	--pwcm-text: #1f2937;
+	--pwcm-primary: #4f46e5;
+	--pwcm-primary-text: #ffffff;
+	--pwcm-secondary: #eef0f4;
+	--pwcm-secondary-text: #111827;
+	--pwcm-link: #4f46e5;
+	--pwcm-accent: #4f46e5;
+	--pwcm-font: inherit;
+	--pwcm-fs: 15px;
+	--pwcm-fs-title: 18px;
+	--pwcm-fs-btn: 14px;
+	--pwcm-radius: 14px;
+	--pwcm-shadow: 0 2px 6px rgba(15, 23, 42, 0.06), 0 16px 40px rgba(15, 23, 42, 0.16);
+	--pwcm-maxw: 420px;
+	--pwcm-pad: 20px;
+	--pwcm-margin: 20px;
+	--pwcm-fab-size: 52px;
+	--pwcm-fab-bg: #4f46e5;
+	--pwcm-fab-fg: #ffffff;
+	--pwcm-fab-x: 20px;
+	--pwcm-fab-y: 20px;
+	--pwcm-fab-icon-shadow: drop-shadow(0 2px 5px rgba(15, 23, 42, 0.45));
+	--pwcm-z: 99990;
+	--pwcm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--pwcm-border: rgba(15, 23, 42, 0.07);
+	font-family: var(--pwcm-font);
+}
+
+.pwcm-root [hidden] {
+	display: none !important;
+}
+
+/* ---------------- overlay ---------------- */
+
+.pwcm-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(15, 23, 42, 0.45);
+	-webkit-backdrop-filter: blur(3px) saturate(0.9);
+	backdrop-filter: blur(3px) saturate(0.9);
+	z-index: calc(var(--pwcm-z) - 2);
+	opacity: 0;
+	transition: opacity 0.25s var(--pwcm-ease);
+}
+
+.pwcm-overlay.is-open {
+	opacity: 1;
+}
+
+/* ---------------- shared window styles ---------------- */
+
+.pwcm-banner,
+.pwcm-prefs {
+	position: fixed;
+	z-index: var(--pwcm-z);
+	box-sizing: border-box;
+	background: var(--pwcm-bg);
+	color: var(--pwcm-text);
+	font-size: var(--pwcm-fs);
+	line-height: 1.55;
+	border: 1px solid var(--pwcm-border);
+	border-radius: var(--pwcm-radius);
+	box-shadow: var(--pwcm-shadow);
+	padding: var(--pwcm-pad);
+	opacity: 0;
+	transform: translateY(12px) scale(0.985);
+	transition: opacity 0.28s var(--pwcm-ease), transform 0.28s var(--pwcm-ease);
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+.pwcm-banner.is-open,
+.pwcm-prefs.is-open {
+	opacity: 1;
+	transform: translateY(0) scale(1);
+}
+
+.pwcm-banner *,
+.pwcm-prefs *,
+.pwcm-toast *,
+.pwcm-ph * {
+	box-sizing: border-box;
+}
+
+.pwcm-title {
+	margin: 0 0 0.45em;
+	font-size: var(--pwcm-fs-title);
+	font-weight: 700;
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+	color: inherit;
+}
+
+.pwcm-text {
+	margin: 0;
+	font-size: var(--pwcm-fs);
+	opacity: 0.86;
+}
+
+.pwcm-text a,
+.pwcm-links a {
+	color: var(--pwcm-link);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	transition: opacity 0.15s ease;
+}
+
+.pwcm-text a:hover,
+.pwcm-links a:hover {
+	opacity: 0.75;
+}
+
+.pwcm-links {
+	margin-top: 0.9em;
+	font-size: 0.85em;
+	display: flex;
+	gap: 1.2em;
+	flex-wrap: wrap;
+	opacity: 0.9;
+}
+
+/* ---------------- buttons ---------------- */
+
+.pwcm-btn {
+	font-family: inherit;
+	font-size: var(--pwcm-fs-btn);
+	font-weight: 600;
+	line-height: 1.2;
+	letter-spacing: 0.01em;
+	padding: 0.7em 1.25em;
+	min-height: 2.6em;
+	border: 0;
+	border-radius: calc(var(--pwcm-radius) * 0.6);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: filter 0.15s ease, box-shadow 0.15s ease;
+	-webkit-font-smoothing: antialiased;
+}
+
+.pwcm-btn:hover {
+	filter: brightness(0.94);
+}
+
+.pwcm-btn:active {
+	filter: brightness(0.9);
+}
+
+.pwcm-btn:focus-visible {
+	outline: 2px solid var(--pwcm-accent);
+	outline-offset: 2px;
+}
+
+.pwcm-btn-primary {
+	background: var(--pwcm-primary);
+	color: var(--pwcm-primary-text);
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.pwcm-btn-primary:hover {
+	box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.pwcm-btn-secondary {
+	background: var(--pwcm-secondary);
+	color: var(--pwcm-secondary-text);
+	box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.pwcm-btn-ghost {
+	background: transparent;
+	color: var(--pwcm-link);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	font-weight: 500;
+}
+
+.pwcm-btn-ghost:hover {
+	filter: none;
+	opacity: 0.75;
+}
+
+.pwcm-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-top: 1.1em;
+	align-items: center;
+}
+
+/* ---------------- banner layouts ---------------- */
+
+/* box (floating card) */
+.pwcm-root[data-layout="box"] .pwcm-banner {
+	width: calc(100% - var(--pwcm-margin) * 2);
+	max-width: var(--pwcm-maxw);
+}
+
+.pwcm-root[data-layout="box"][data-position="bottom-right"] .pwcm-banner {
+	right: var(--pwcm-margin);
+	bottom: var(--pwcm-margin);
+}
+
+.pwcm-root[data-layout="box"][data-position="bottom-left"] .pwcm-banner {
+	left: var(--pwcm-margin);
+	bottom: var(--pwcm-margin);
+}
+
+.pwcm-root[data-layout="box"][data-position="top-right"] .pwcm-banner {
+	right: var(--pwcm-margin);
+	top: var(--pwcm-margin);
+}
+
+.pwcm-root[data-layout="box"][data-position="top-left"] .pwcm-banner {
+	left: var(--pwcm-margin);
+	top: var(--pwcm-margin);
+}
+
+/* edge midpoints: compose the centering offset with the slide/scale entrance
+   animation, same technique as the modal layout below */
+.pwcm-root[data-layout="box"][data-position="top-center"] .pwcm-banner {
+	left: 50%;
+	top: var(--pwcm-margin);
+	transform: translateX(-50%) translateY(12px) scale(0.985);
+}
+
+.pwcm-root[data-layout="box"][data-position="top-center"] .pwcm-banner.is-open {
+	transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.pwcm-root[data-layout="box"][data-position="bottom-center"] .pwcm-banner {
+	left: 50%;
+	bottom: var(--pwcm-margin);
+	transform: translateX(-50%) translateY(12px) scale(0.985);
+}
+
+.pwcm-root[data-layout="box"][data-position="bottom-center"] .pwcm-banner.is-open {
+	transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.pwcm-root[data-layout="box"][data-position="left-center"] .pwcm-banner {
+	left: var(--pwcm-margin);
+	top: 50%;
+	transform: translateY(calc(-50% + 12px)) scale(0.985);
+}
+
+.pwcm-root[data-layout="box"][data-position="left-center"] .pwcm-banner.is-open {
+	transform: translateY(-50%) scale(1);
+}
+
+.pwcm-root[data-layout="box"][data-position="right-center"] .pwcm-banner {
+	right: var(--pwcm-margin);
+	top: 50%;
+	transform: translateY(calc(-50% + 12px)) scale(0.985);
+}
+
+.pwcm-root[data-layout="box"][data-position="right-center"] .pwcm-banner.is-open {
+	transform: translateY(-50%) scale(1);
+}
+
+/* bar (full width) */
+.pwcm-root[data-layout="bar"] .pwcm-banner {
+	left: 0;
+	right: 0;
+	width: 100%;
+	max-width: none;
+	border-radius: 0;
+	border-left: 0;
+	border-right: 0;
+	display: flex;
+	align-items: center;
+	gap: calc(var(--pwcm-pad) * 1.2);
+	flex-wrap: wrap;
+	padding-left: max(var(--pwcm-pad), env(safe-area-inset-left, 0px));
+	padding-right: max(var(--pwcm-pad), env(safe-area-inset-right, 0px));
+}
+
+.pwcm-root[data-layout="bar"] .pwcm-banner-content {
+	flex: 1 1 320px;
+	min-width: 260px;
+}
+
+.pwcm-root[data-layout="bar"] .pwcm-actions {
+	margin-top: 0;
+	flex: 0 0 auto;
+}
+
+.pwcm-root[data-layout="bar"][data-position="bottom"] .pwcm-banner {
+	bottom: 0;
+	border-bottom: 0;
+	transform: translateY(16px);
+}
+
+.pwcm-root[data-layout="bar"][data-position="top"] .pwcm-banner {
+	top: 0;
+	border-top: 0;
+	transform: translateY(-16px);
+}
+
+.pwcm-root[data-layout="bar"] .pwcm-banner.is-open {
+	transform: translateY(0);
+}
+
+/* modal (centered) */
+.pwcm-root[data-layout="modal"] .pwcm-banner {
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, calc(-50% + 14px)) scale(0.985);
+	width: calc(100% - var(--pwcm-margin) * 2);
+	max-width: var(--pwcm-maxw);
+}
+
+.pwcm-root[data-layout="modal"] .pwcm-banner.is-open {
+	transform: translate(-50%, -50%) scale(1);
+}
+
+/* ---------------- preferences window ---------------- */
+
+.pwcm-prefs {
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, calc(-50% + 14px)) scale(0.985);
+	width: calc(100% - var(--pwcm-margin) * 2);
+	max-width: 580px;
+	max-height: min(82vh, 720px);
+	display: flex;
+	flex-direction: column;
+}
+
+.pwcm-prefs.is-open {
+	transform: translate(-50%, -50%) scale(1);
+}
+
+.pwcm-prefs-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.pwcm-prefs-head .pwcm-title {
+	margin-bottom: 0.2em;
+}
+
+.pwcm-close {
+	flex: 0 0 auto;
+	background: transparent;
+	border: 0;
+	cursor: pointer;
+	color: inherit;
+	font-size: 0.95em;
+	line-height: 1;
+	width: 32px;
+	height: 32px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8px;
+	opacity: 0.55;
+	margin: -4px -6px 0 0;
+	transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.pwcm-close:hover {
+	opacity: 1;
+	background: var(--pwcm-secondary);
+}
+
+.pwcm-close:focus-visible {
+	outline: 2px solid var(--pwcm-accent);
+	outline-offset: 1px;
+	opacity: 1;
+}
+
+.pwcm-prefs-body {
+	overflow-y: auto;
+	margin: 0.6em 0 0;
+	padding-right: 6px;
+	flex: 1 1 auto;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(128, 128, 128, 0.35) transparent;
+}
+
+.pwcm-prefs-body::-webkit-scrollbar {
+	width: 6px;
+}
+
+.pwcm-prefs-body::-webkit-scrollbar-thumb {
+	background: rgba(128, 128, 128, 0.35);
+	border-radius: 3px;
+}
+
+.pwcm-cats {
+	list-style: none;
+	margin: 1em 0 0;
+	padding: 0;
+}
+
+.pwcm-cat {
+	padding: 0.95em 0;
+	border-top: 1px solid var(--pwcm-border);
+}
+
+.pwcm-cat:first-child {
+	border-top: 0;
+}
+
+.pwcm-cat-desc {
+	margin: 0.4em 0 0 54px;
+	font-size: 0.86em;
+	line-height: 1.5;
+	opacity: 0.72;
+}
+
+/* toggle switch */
+.pwcm-switch {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	cursor: pointer;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.pwcm-switch input {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.pwcm-slider {
+	flex: 0 0 42px;
+	width: 42px;
+	height: 24px;
+	border-radius: 24px;
+	background: rgba(128, 128, 128, 0.32);
+	box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+	position: relative;
+	transition: background 0.2s var(--pwcm-ease);
+}
+
+.pwcm-slider::after {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: #fff;
+	transition: transform 0.2s var(--pwcm-ease);
+	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3), 0 0 0 0.5px rgba(15, 23, 42, 0.06);
+}
+
+.pwcm-switch input:checked + .pwcm-slider {
+	background: var(--pwcm-accent);
+}
+
+.pwcm-switch input:checked + .pwcm-slider::after {
+	transform: translateX(18px);
+}
+
+.pwcm-switch input:disabled + .pwcm-slider {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.pwcm-switch input:focus-visible + .pwcm-slider {
+	outline: 2px solid var(--pwcm-accent);
+	outline-offset: 2px;
+}
+
+.pwcm-switch:hover input:not(:disabled) + .pwcm-slider::after {
+	box-shadow: 0 1px 5px rgba(15, 23, 42, 0.4), 0 0 0 0.5px rgba(15, 23, 42, 0.06);
+}
+
+.pwcm-cat-label {
+	font-weight: 600;
+	letter-spacing: -0.005em;
+}
+
+/* services details */
+.pwcm-svc {
+	margin: 0.55em 0 0 54px;
+	font-size: 0.82em;
+}
+
+.pwcm-svc summary {
+	cursor: pointer;
+	color: var(--pwcm-link);
+	list-style: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.pwcm-svc summary::-webkit-details-marker {
+	display: none;
+}
+
+.pwcm-svc summary::before {
+	content: "";
+	width: 0;
+	height: 0;
+	border-left: 5px solid currentColor;
+	border-top: 4px solid transparent;
+	border-bottom: 4px solid transparent;
+	transition: transform 0.2s var(--pwcm-ease);
+}
+
+.pwcm-svc[open] summary::before {
+	transform: rotate(90deg);
+}
+
+.pwcm-svc-table {
+	width: 100%;
+	margin-top: 0.6em;
+	border-collapse: collapse;
+}
+
+.pwcm-svc-table th,
+.pwcm-svc-table td {
+	text-align: left;
+	vertical-align: top;
+	padding: 0.45em 0.6em 0.45em 0;
+	border-bottom: 1px solid var(--pwcm-border);
+	font-weight: 400;
+}
+
+.pwcm-svc-table tr:last-child th,
+.pwcm-svc-table tr:last-child td {
+	border-bottom: 0;
+}
+
+.pwcm-svc-table th {
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.pwcm-svc-table td span {
+	display: block;
+	opacity: 0.78;
+}
+
+.pwcm-svc-table code {
+	font-size: 0.9em;
+	opacity: 0.65;
+	word-break: break-all;
+}
+
+/* ---------------- toast ---------------- */
+
+.pwcm-toast {
+	position: fixed;
+	left: 50%;
+	bottom: calc(var(--pwcm-margin) + 4px);
+	transform: translate(-50%, 12px);
+	z-index: calc(var(--pwcm-z) + 1);
+	background: var(--pwcm-primary);
+	color: var(--pwcm-primary-text);
+	font-size: var(--pwcm-fs-btn);
+	font-family: var(--pwcm-font);
+	font-weight: 500;
+	padding: 0.75em 1.4em 0.75em 1.1em;
+	border-radius: calc(var(--pwcm-radius) * 0.6);
+	box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18), 0 12px 32px rgba(15, 23, 42, 0.18);
+	display: inline-flex;
+	align-items: center;
+	gap: 0.55em;
+	opacity: 0;
+	transition: opacity 0.25s var(--pwcm-ease), transform 0.25s var(--pwcm-ease);
+	-webkit-font-smoothing: antialiased;
+}
+
+.pwcm-toast::before {
+	content: "";
+	flex: 0 0 auto;
+	width: 0.55em;
+	height: 0.95em;
+	margin-top: -0.2em;
+	border-right: 2px solid currentColor;
+	border-bottom: 2px solid currentColor;
+	transform: rotate(45deg);
+	opacity: 0.9;
+}
+
+.pwcm-toast.is-open {
+	opacity: 1;
+	transform: translate(-50%, 0);
+}
+
+/* ---------------- floating icon button ---------------- */
+
+.pwcm-fab {
+	position: fixed;
+	z-index: calc(var(--pwcm-z) - 1);
+	width: var(--pwcm-fab-size);
+	height: var(--pwcm-fab-size);
+	background: var(--pwcm-fab-bg);
+	color: var(--pwcm-fab-fg);
+	border: 0;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18), 0 10px 28px rgba(15, 23, 42, 0.22);
+	transition: box-shadow 0.2s ease;
+}
+
+.pwcm-fab:hover {
+	box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2), 0 16px 40px rgba(15, 23, 42, 0.26);
+}
+
+.pwcm-fab:focus-visible {
+	outline: 2px solid var(--pwcm-fab-bg);
+	outline-offset: 3px;
+}
+
+.pwcm-fab svg {
+	width: 52%;
+	height: 52%;
+	transition: transform 0.4s var(--pwcm-ease);
+}
+
+/* the banana's line-art is thinner than the other (bold, filled) icons —
+   add a matching stroke on top of the fill so it reads at the same visual
+   weight, wherever it appears (fab button + builder icon picker). The path
+   data sits inside a nested "matrix(0.2067,...)" transform group, so a
+   stroke-width declared on the path is scaled down by that same ~0.2067
+   factor at render time. Value picked by measuring rendered ink coverage
+   (% of dark pixels in a fixed-size canvas render) against the cookie
+   icon's own coverage and solving for a match, not by eye — 27 lands at
+   ~0.365 ink ratio vs cookie's ~0.360. */
+.pwcm-fab[data-icon="banana"] svg path,
+.pwb-icon-choice[title="banana"] svg path {
+	stroke: currentColor;
+	stroke-width: 27;
+	stroke-linejoin: round;
+	stroke-linecap: round;
+	paint-order: stroke fill;
+}
+
+/* the banana wiggles on hover — pure joy, no compliance value whatsoever */
+.pwcm-fab[data-icon="banana"]:hover svg {
+	animation: pwcm-wiggle 0.6s ease-in-out;
+}
+
+@keyframes pwcm-wiggle {
+	0%, 100% { transform: rotate(0); }
+	20% { transform: rotate(-12deg); }
+	45% { transform: rotate(10deg); }
+	70% { transform: rotate(-6deg); }
+	88% { transform: rotate(3deg); }
+}
+
+.pwcm-root[data-fab-shape="round"] .pwcm-fab {
+	border-radius: 50%;
+}
+
+.pwcm-root[data-fab-shape="rounded"] .pwcm-fab {
+	border-radius: calc(var(--pwcm-fab-size) * 0.28);
+}
+
+.pwcm-root[data-fab-shape="square"] .pwcm-fab {
+	border-radius: 4px;
+}
+
+.pwcm-root[data-fab-pos="bottom-right"] .pwcm-fab {
+	right: var(--pwcm-fab-x);
+	bottom: var(--pwcm-fab-y);
+}
+
+.pwcm-root[data-fab-pos="bottom-left"] .pwcm-fab {
+	left: var(--pwcm-fab-x);
+	bottom: var(--pwcm-fab-y);
+}
+
+.pwcm-root[data-fab-pos="top-right"] .pwcm-fab {
+	right: var(--pwcm-fab-x);
+	top: var(--pwcm-fab-y);
+}
+
+.pwcm-root[data-fab-pos="top-left"] .pwcm-fab {
+	left: var(--pwcm-fab-x);
+	top: var(--pwcm-fab-y);
+}
+
+/* icon-only fab: no background/shadow box, just the glyph — a soft drop
+   shadow keeps it legible over any page background instead of a hard box */
+.pwcm-root[data-fab-transparent="1"] .pwcm-fab {
+	background: transparent;
+	box-shadow: none;
+}
+
+.pwcm-root[data-fab-transparent="1"] .pwcm-fab:hover {
+	box-shadow: none;
+}
+
+.pwcm-root[data-fab-transparent="1"] .pwcm-fab svg {
+	filter: var(--pwcm-fab-icon-shadow);
+}
+
+/* ---------------- blocked elements & placeholders ---------------- */
+
+.pwcm-blocked {
+	display: none !important;
+}
+
+.pwcm-ph {
+	position: relative;
+	background: var(--pwcm-secondary);
+	color: var(--pwcm-secondary-text);
+	font-family: var(--pwcm-font);
+	font-size: var(--pwcm-fs);
+	border: 1px solid var(--pwcm-border);
+	border-radius: var(--pwcm-radius);
+	padding: calc(var(--pwcm-pad) * 1.2) var(--pwcm-pad);
+	min-height: 180px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	overflow: hidden;
+	-webkit-font-smoothing: antialiased;
+}
+
+.pwcm-ph-inner {
+	position: relative;
+	z-index: 2;
+	max-width: 440px;
+}
+
+/* video preview poster (YouTube/Vimeo thumbnail cached server-side) */
+.pwcm-ph-poster {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	background-size: cover;
+	background-position: center;
+	background-color: #0b0b0f;
+}
+
+.pwcm-ph-poster::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: rgba(8, 10, 18, 0.55);
+	transition: background 0.2s ease;
+}
+
+.pwcm-ph-hasposter:hover .pwcm-ph-poster::before {
+	background: rgba(8, 10, 18, 0.42);
+}
+
+.pwcm-ph-hasposter {
+	color: #fff;
+	border: 0;
+}
+
+.pwcm-ph-hasposter .pwcm-ph-msg {
+	opacity: 0.95;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.pwcm-ph-play {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	z-index: 1;
+	width: 66px;
+	height: 46px;
+	margin: -23px 0 0 -33px;
+	border-radius: 12px;
+	background: rgba(20, 20, 24, 0.72);
+	transition: background 0.2s ease, transform 0.2s var(--pwcm-ease);
+}
+
+.pwcm-ph-hasposter:hover .pwcm-ph-play {
+	background: #f00;
+}
+
+.pwcm-ph-play::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-40%, -50%);
+	border-style: solid;
+	border-width: 9px 0 9px 15px;
+	border-color: transparent transparent transparent #fff;
+}
+
+/* nudge the actions below the play glyph when a poster is shown */
+.pwcm-ph-hasposter .pwcm-ph-inner {
+	margin-top: 58px;
+}
+
+.pwcm-ph-msg {
+	margin: 0 0 1.1em;
+	font-size: 0.92em;
+	line-height: 1.55;
+	opacity: 0.82;
+}
+
+.pwcm-ph-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+/* ---------------- generated cookie policy ---------------- */
+
+.pwcm-policy {
+	line-height: 1.6;
+}
+
+.pwcm-policy-updated {
+	opacity: 0.7;
+	font-size: 0.9em;
+}
+
+.pwcm-policy-cat {
+	margin: 1.4em 0;
+}
+
+.pwcm-policy-badge {
+	display: inline-block;
+	font-size: 0.7em;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	padding: 2px 8px;
+	border-radius: 10px;
+	background: rgba(5, 150, 105, 0.12);
+	color: #059669;
+	vertical-align: middle;
+}
+
+.pwcm-policy-muted {
+	opacity: 0.65;
+}
+
+.pwcm-policy-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 0.8em 0 0;
+	font-size: 0.92em;
+}
+
+.pwcm-policy-table th,
+.pwcm-policy-table td {
+	text-align: left;
+	vertical-align: top;
+	padding: 0.55em 0.7em;
+	border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.pwcm-policy-table thead th {
+	font-weight: 600;
+	border-bottom-width: 2px;
+	white-space: nowrap;
+}
+
+.pwcm-policy-table tbody th {
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.pwcm-policy-table code {
+	font-size: 0.9em;
+	background: rgba(128, 128, 128, 0.12);
+	padding: 1px 5px;
+	border-radius: 4px;
+	white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+	.pwcm-policy-table,
+	.pwcm-policy-table thead,
+	.pwcm-policy-table tbody,
+	.pwcm-policy-table th,
+	.pwcm-policy-table td,
+	.pwcm-policy-table tr {
+		display: block;
+	}
+
+	.pwcm-policy-table thead {
+		display: none;
+	}
+
+	.pwcm-policy-table tr {
+		margin-bottom: 1em;
+		border: 1px solid rgba(128, 128, 128, 0.2);
+		border-radius: 8px;
+		padding: 0.4em 0.7em;
+	}
+
+	.pwcm-policy-table td,
+	.pwcm-policy-table tbody th {
+		border: 0;
+		padding: 0.25em 0;
+	}
+}
+
+/* ---------------- responsive ---------------- */
+
+@media (max-width: 600px) {
+	.pwcm-root[data-layout="box"] .pwcm-banner {
+		left: 10px;
+		right: 10px;
+		width: auto;
+		max-width: none;
+	}
+
+	.pwcm-root[data-layout="box"][data-position="bottom-right"] .pwcm-banner,
+	.pwcm-root[data-layout="box"][data-position="bottom-left"] .pwcm-banner {
+		bottom: 10px;
+	}
+
+	.pwcm-root[data-layout="box"][data-position="top-right"] .pwcm-banner,
+	.pwcm-root[data-layout="box"][data-position="top-left"] .pwcm-banner {
+		top: 10px;
+	}
+
+	/* edge midpoints: full-width on mobile, so horizontal centering no longer
+	   applies — reset to the plain slide transform and anchor to top/bottom */
+	.pwcm-root[data-layout="box"][data-position="top-center"] .pwcm-banner,
+	.pwcm-root[data-layout="box"][data-position="bottom-center"] .pwcm-banner,
+	.pwcm-root[data-layout="box"][data-position="left-center"] .pwcm-banner,
+	.pwcm-root[data-layout="box"][data-position="right-center"] .pwcm-banner {
+		transform: translateY(12px) scale(0.985);
+	}
+
+	.pwcm-root[data-layout="box"][data-position="top-center"] .pwcm-banner.is-open,
+	.pwcm-root[data-layout="box"][data-position="bottom-center"] .pwcm-banner.is-open,
+	.pwcm-root[data-layout="box"][data-position="left-center"] .pwcm-banner.is-open,
+	.pwcm-root[data-layout="box"][data-position="right-center"] .pwcm-banner.is-open {
+		transform: translateY(0) scale(1);
+	}
+
+	.pwcm-root[data-layout="box"][data-position="top-center"] .pwcm-banner {
+		top: 10px;
+	}
+
+	.pwcm-root[data-layout="box"][data-position="bottom-center"] .pwcm-banner,
+	.pwcm-root[data-layout="box"][data-position="left-center"] .pwcm-banner,
+	.pwcm-root[data-layout="box"][data-position="right-center"] .pwcm-banner {
+		bottom: 10px;
+		top: auto;
+	}
+
+	.pwcm-prefs {
+		max-width: none;
+		left: 10px;
+		right: 10px;
+		width: auto;
+		transform: translateY(14px);
+		top: auto;
+		bottom: 10px;
+		max-height: 86vh;
+	}
+
+	.pwcm-prefs.is-open {
+		transform: translateY(0);
+	}
+
+	.pwcm-actions .pwcm-btn {
+		flex: 1 1 auto;
+	}
+
+	.pwcm-cat-desc,
+	.pwcm-svc {
+		margin-left: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pwcm-banner,
+	.pwcm-prefs,
+	.pwcm-overlay,
+	.pwcm-toast,
+	.pwcm-slider,
+	.pwcm-slider::after,
+	.pwcm-btn,
+	.pwcm-fab,
+	.pwcm-svc summary::before {
+		transition: none !important;
+	}
+}
+
+/* ---------------- builder preview mode ----------------
+   Inside the ProcessCookie live preview the widget is confined to the
+   preview viewport: fixed becomes absolute, visibility is driven by
+   the data-preview attribute instead of the frontend JS. */
+
+.pwcm-preview .pwcm-banner,
+.pwcm-preview .pwcm-prefs,
+.pwcm-preview .pwcm-overlay,
+.pwcm-preview .pwcm-toast,
+.pwcm-preview .pwcm-fab {
+	position: absolute;
+	display: none;
+}
+
+/* !important beats the `[hidden]` attribute the widgets carry in markup */
+.pwcm-preview[data-preview="banner"] .pwcm-banner,
+.pwcm-preview[data-preview="prefs"] .pwcm-prefs {
+	display: block !important;
+	opacity: 1;
+}
+
+.pwcm-preview[data-preview="fab"] .pwcm-fab {
+	display: inline-flex !important;
+	opacity: 1;
+}
+
+.pwcm-preview[data-preview="prefs"] .pwcm-overlay,
+.pwcm-preview[data-preview="banner"][data-overlay="1"] .pwcm-overlay {
+	display: block !important;
+	opacity: 1;
+}
+
+.pwcm-preview .pwcm-overlay {
+	position: absolute;
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+}
+
+.pwcm-preview .pwcm-banner,
+.pwcm-preview .pwcm-prefs {
+	transform: none !important;
+}
+
+.pwcm-preview .pwcm-prefs {
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%) !important;
+	max-height: 88%;
+}
+
+.pwcm-preview[data-layout="modal"] .pwcm-banner {
+	transform: translate(-50%, -50%) !important;
+}
