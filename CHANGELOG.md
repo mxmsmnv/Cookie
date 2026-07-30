@@ -2,6 +2,14 @@
 
 All notable changes to Cookie are documented here.
 
+## [1.1.2] - 2026-07-30
+
+### Fixed
+
+- Video poster images are now stored in the public
+  `site/assets/Cookie/posters/` directory instead of ProcessWire's protected
+  cache directory, preventing 403 responses with the default `.htaccess`.
+
 ## [1.1.1] - 2026-07-30
 
 ### Fixed

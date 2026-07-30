@@ -41,7 +41,7 @@ class Cookie extends WireData implements Module {
 		return [
 			'title' => 'Cookie',
 			'summary' => 'Privacy & cookie consent management: banner, category-based async loading of scripts/embeds, consent log, Google Consent Mode v2, visual widget builder.',
-			'version' => '1.1.1',
+			'version' => '1.1.2',
 			'author' => 'Cookie module contributors',
 			'href' => 'https://github.com/mxmsmnv/Cookie',
 			'icon' => 'shield',
@@ -909,7 +909,7 @@ class Cookie extends WireData implements Module {
 	 * Locally cached poster image URL for a YouTube/Vimeo embed URL.
 	 *
 	 * The thumbnail is downloaded once by the server and served from
-	 * /site/assets/cache/ — the visitor's browser never contacts the video
+	 * /site/assets/Cookie/posters/ — the visitor's browser never contacts the video
 	 * platform before consent (GDPR: no IP leak through preview images).
 	 *
 	 * @param string $url embed URL
@@ -922,8 +922,8 @@ class Cookie extends WireData implements Module {
 			if(!$video) return '';
 			$config = $this->wire()->config;
 			$file = $video[0] . '-' . $video[1] . '.jpg';
-			$dir = $config->paths->cache . 'Cookie/posters/';
-			$posterUrl = $config->urls->cache . 'Cookie/posters/' . $file;
+			$dir = $config->paths->assets . 'Cookie/posters/';
+			$posterUrl = $config->urls->assets . 'Cookie/posters/' . $file;
 			if(is_file($dir . $file)) return $posterUrl;
 
 			$cache = $this->wire()->cache;
