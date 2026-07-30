@@ -2,6 +2,15 @@
 
 All notable changes to Cookie are documented here.
 
+## [1.1.1] - 2026-07-30
+
+### Fixed
+
+- Regional configuration and optional consent-log endpoints no longer emit a
+  ProcessWire session cookie. Loading or saving cookie preferences therefore
+  does not make later anonymous navigation bypass CloudCache.
+- Aligned all module class release versions.
+
 ## [1.1.0] - 2026-07-30
 
 ### Added

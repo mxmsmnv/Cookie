@@ -105,8 +105,9 @@ opt-out for US-style regions, and a configurable default for the rest (opt-in,
 opt-out, or no banner). The country comes from the `CF-IPCountry` header
 (Cloudflare and many CDNs set it); override the header name, set
 `$config->geoCountry`, or hook `Cookie::detectCountry` to plug in a GeoIP
-library. With full-page caching, vary the cache by country or exclude the config
-script so visitors don't share one region's model.
+library. With full-page caching, shared HTML contains a conservative opt-in
+fallback and the frontend resolves the visitor's model from a private,
+session-free endpoint before starting the consent manager.
 
 ## Consent-first auto-blocking
 

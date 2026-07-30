@@ -41,7 +41,7 @@ class Cookie extends WireData implements Module {
 		return [
 			'title' => 'Cookie',
 			'summary' => 'Privacy & cookie consent management: banner, category-based async loading of scripts/embeds, consent log, Google Consent Mode v2, visual widget builder.',
-			'version' => '1.1.0',
+			'version' => '1.1.1',
 			'author' => 'Cookie module contributors',
 			'href' => 'https://github.com/mxmsmnv/Cookie',
 			'icon' => 'shield',
@@ -724,10 +724,12 @@ class Cookie extends WireData implements Module {
 		header('Content-Type: application/json; charset=utf-8');
 		header('Cache-Control: private, no-store, no-cache, must-revalidate');
 		header('Pragma: no-cache');
-		return json_encode([
+		$response = json_encode([
 			'model' => $model === 'optout' ? 'optout' : 'optin',
 			'autoShow' => $model !== 'none' && $this->allowBanner($this->wire()->page),
 		], JSON_UNESCAPED_SLASHES);
+		header_remove('Set-Cookie');
+		return $response;
 	}
 
 	/**
@@ -1213,6 +1215,9 @@ class Cookie extends WireData implements Module {
 		} catch(\Exception $e) {
 			$this->wire()->log->save('cookie', 'Consent log error: ' . $e->getMessage());
 		}
+		header('Cache-Control: private, no-store, max-age=0');
+		header('Pragma: no-cache');
+		header_remove('Set-Cookie');
 		return 'ok';
 	}
 
