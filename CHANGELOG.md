@@ -2,6 +2,19 @@
 
 All notable changes to Cookie are documented here.
 
+## [1.1.0] - 2026-07-30
+
+### Added
+
+- Added a private/no-store regional configuration endpoint for geo mode.
+
+### Changed
+
+- Cacheable HTML now carries a conservative opt-in fallback instead of a
+  visitor-specific consent model. The frontend resolves the actual regional
+  model before starting the consent manager and fails closed if that request
+  is unavailable.
+
 ## [1.0.0] - 2026-07-04
 
 ### Added

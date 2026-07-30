@@ -737,11 +737,36 @@
 		}
 	};
 
-	function boot() {
+	function startManager() {
 		var manager = new CookieManager();
 		if (!manager.root) return;
 		manager.snapshot();
 		window.pwCookie = manager;
+	}
+
+	function boot() {
+		if (!cfg.geoConfigUrl) {
+			startManager();
+			return;
+		}
+
+		var pageAllowsBanner = cfg.autoShow !== false;
+		fetch(cfg.geoConfigUrl, {
+			credentials: "same-origin",
+			headers: { "Accept": "application/json" },
+			cache: "no-store"
+		}).then(function (response) {
+			if (!response.ok) throw new Error("Regional consent config unavailable");
+			return response.json();
+		}).then(function (regional) {
+			if (regional.model === "optin" || regional.model === "optout") cfg.model = regional.model;
+			cfg.autoShow = pageAllowsBanner && regional.autoShow !== false;
+		}).catch(function () {
+			// Fail closed: retain the cached document's conservative opt-in
+			// model and visible banner.
+			cfg.model = "optin";
+			cfg.autoShow = pageAllowsBanner;
+		}).then(startManager);
 	}
 
 	if (document.readyState === "loading") {

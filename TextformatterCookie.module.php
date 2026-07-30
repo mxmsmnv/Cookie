@@ -15,7 +15,7 @@ class TextformatterCookie extends Textformatter {
 		return [
 			'title' => 'Cookie: Embed Blocker',
 			'summary' => 'Defers iframes/scripts from configured domains (YouTube, Vimeo, Google Maps, …) until cookie consent is given.',
-			'version' => '1.0.0',
+			'version' => '1.1.0',
 			'icon' => 'eye-slash',
 			'requires' => ['Cookie'],
 		];

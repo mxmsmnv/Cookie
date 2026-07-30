@@ -115,6 +115,8 @@ Key methods on the `Cookie` module (all in `Cookie.module.php`; `___`-prefixed m
 - `___renderPolicy(array $options = [])` — builds a full cookie-policy document from configured services.
 - `___getFrontendConfig()` — the JSON config handed to the frontend JS; hook this to change frontend behavior per-request (e.g. geo rules).
 - `___resolveConsentModel()` / `___detectCountry()` — geo-mode model resolution.
+- Geo mode resolves the visitor model through the private/no-store
+  `/pwcm-geo/` endpoint, keeping shared full-page HTML cache-safe.
 - `___allowBanner($page)` — return false to suppress the banner on specific pages/conditions.
 - `___allowCategory($key)` — kill switch for a whole category, site-wide.
 - `___getBlockRules()` — the merged tracker/domain-to-category map used for auto-blocking.

@@ -29,6 +29,7 @@ class Cookie extends WireData implements Module {
 
 	const LOG_TABLE = 'cookie_consent_log';
 	const LOG_ENDPOINT = '/pwcm-cl/';
+	const GEO_CONFIG_ENDPOINT = '/pwcm-geo/';
 
 	/** @var bool guards against multiple render-hook injections (PageTable etc.) */
 	protected $rendered = false;
@@ -40,7 +41,7 @@ class Cookie extends WireData implements Module {
 		return [
 			'title' => 'Cookie',
 			'summary' => 'Privacy & cookie consent management: banner, category-based async loading of scripts/embeds, consent log, Google Consent Mode v2, visual widget builder.',
-			'version' => '1.0.0',
+			'version' => '1.1.0',
 			'author' => 'Cookie module contributors',
 			'href' => 'https://github.com/mxmsmnv/Cookie',
 			'icon' => 'shield',
@@ -56,6 +57,10 @@ class Cookie extends WireData implements Module {
 	 * ================================================================ */
 
 	public function init() {
+		if($this->is_active && $this->geo_mode) {
+			$this->wire()->addHook(self::GEO_CONFIG_ENDPOINT, $this, 'hookGeoConfig');
+		}
+
 		// consent log endpoint (POST via sendBeacon/fetch from the frontend)
 		if($this->enable_logging) {
 			$this->wire()->addHook(self::LOG_ENDPOINT, $this, 'hookLogConsent');
@@ -597,7 +602,9 @@ class Cookie extends WireData implements Module {
 				$cookiesToClear[$cat['key']] = array_merge($cookiesToClear[$cat['key']], $service['cookies']);
 			}
 		}
-		$model = $this->resolveConsentModel();
+		// Geo mode is resolved through a private/no-store request so a shared
+		// full-page cache never persists one visitor's regional consent model.
+		$model = $this->geo_mode ? 'optin' : $this->resolveConsentModel();
 		return [
 			'prefix' => $this->cssPrefix(),
 			'cookieName' => $this->cookieName(),
@@ -610,6 +617,9 @@ class Cookie extends WireData implements Module {
 			'messageTimeout' => (int) $this->message_timeout,
 			// 'none' region: no applicable law → never auto-show, widget stays reachable
 			'autoShow' => $model !== 'none' && $this->allowBanner($this->wire()->page),
+			'geoConfigUrl' => $this->geo_mode
+				? rtrim($this->wire()->config->urls->root, '/') . self::GEO_CONFIG_ENDPOINT
+				: '',
 			'bodyClasses' => (bool) $this->body_classes,
 			'observe' => (bool) $this->observe_dom,
 			'reloadOnRevoke' => (bool) $this->reload_on_revoke,
@@ -697,6 +707,27 @@ class Cookie extends WireData implements Module {
 			if(preg_match('/^[A-Z]{2}$/', $code)) $codes[$code] = true;
 		}
 		return array_keys($codes);
+	}
+
+	/**
+	 * Request-local regional consent settings for cache-safe frontend startup.
+	 */
+	public function hookGeoConfig(HookEvent $event) {
+		if(($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
+			http_response_code(405);
+			header('Allow: GET');
+			return '';
+		}
+
+		$model = $this->resolveConsentModel();
+		$this->wire()->config->ajax = true;
+		header('Content-Type: application/json; charset=utf-8');
+		header('Cache-Control: private, no-store, no-cache, must-revalidate');
+		header('Pragma: no-cache');
+		return json_encode([
+			'model' => $model === 'optout' ? 'optout' : 'optin',
+			'autoShow' => $model !== 'none' && $this->allowBanner($this->wire()->page),
+		], JSON_UNESCAPED_SLASHES);
 	}
 
 	/**
