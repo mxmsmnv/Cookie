@@ -98,9 +98,17 @@ if(!empty($t['link_imprint'])) {
 			<button type="button" class="<?php echo $p; ?>-btn <?php echo $p; ?>-btn-secondary" data-action="reject"><?php echo $s->entities1($t['txt_btn_reject']); ?></button>
 		</div>
 		<?php if($links): ?><div class="<?php echo $p; ?>-links"><?php echo $links; ?></div><?php endif; ?>
+		<?php if($module->show_consent_id && $module->enable_logging): ?>
+			<p class="<?php echo $p; ?>-consent-id" hidden>
+				<span><?php echo $s->entities1($t['txt_consent_id']); ?>:</span>
+				<code data-consent-id></code>
+			</p>
+		<?php endif; ?>
 	</section>
 
-	<div class="<?php echo $p; ?>-toast" role="status" aria-live="polite" hidden><?php echo $s->entities1($t['txt_msg_saved']); ?></div>
+	<div class="<?php echo $p; ?>-toast" role="status" aria-live="polite"
+		data-saved-message="<?php echo $s->entities1($t['txt_msg_saved']); ?>"
+		data-gpc-message="<?php echo $s->entities1($t['txt_gpc_honored']); ?>" hidden><?php echo $s->entities1($t['txt_msg_saved']); ?></div>
 
 	<button type="button" class="<?php echo $p; ?>-fab" data-action="prefs" data-icon="<?php echo $s->entities1($design['icon_type']); ?>" aria-label="<?php echo $s->entities1($t['txt_icon_aria']); ?>" <?php echo ($design['icon_show'] || $preview) ? '' : 'data-disabled="1"'; ?> hidden>
 		<?php echo $iconSvg; ?>

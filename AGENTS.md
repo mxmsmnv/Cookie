@@ -114,7 +114,8 @@ Key methods on the `Cookie` module (all in `Cookie.module.php`; `___`-prefixed m
 - `___getServiceCatalog()` — the 23-entry known-services database (hookable to add more).
 - `___renderPolicy(array $options = [])` — builds a full cookie-policy document from configured services.
 - `___getFrontendConfig()` — the JSON config handed to the frontend JS; hook this to change frontend behavior per-request (e.g. geo rules).
-- `___resolveConsentModel()` / `___detectCountry()` — geo-mode model resolution.
+- `___resolveConsentModel()` / `___detectCountry()` / `___detectRegion()` — country and ISO 3166-2 region model resolution; subdivision rules take priority.
+- `___detectGpc()` — server-side `Sec-GPC: 1` detection; frontend detection also checks `navigator.globalPrivacyControl`.
 - Geo mode resolves the visitor model through the private/no-store
   `/pwcm-geo/` endpoint, keeping shared full-page HTML cache-safe.
 - `___allowBanner($page)` — return false to suppress the banner on specific pages/conditions.
@@ -124,6 +125,7 @@ Key methods on the `Cookie` module (all in `Cookie.module.php`; `___`-prefixed m
 - `___allowGate($page)` — return false to skip auto-gating on specific pages.
 - `___getIconSvg($type)` — fab icon SVG by key (`cookie`/`shield`/`sliders`/`gear`/`banana`/`fingerprint`/`pw`).
 - `exportSettings()` / `importSettings(array $data)` — full-config JSON transfer, salt excluded.
+- `cookieDomain()` — validated optional parent domain used to share the consent cookie with trusted subdomains; empty means host-only.
 
 ## Hooks (site/ready.php)
 
@@ -163,7 +165,7 @@ Also hookable: `renderHead`, `renderBanner`, `getTemplateFile`, `getCategories`,
 ## JS API & Events
 
 ```js
-window.pwCookie.getConsent();          // {version, storedAt, valid, categories:{...}}
+window.pwCookie.getConsent();          // {id, version, storedAt, valid, categories:{...}}
 window.pwCookie.hasConsent('statistics');
 window.pwCookie.allow('marketing');    // grant + save (silent)
 window.pwCookie.revoke('marketing');
@@ -175,7 +177,7 @@ window.pwCookie.refresh();             // re-process blocked elements (dynamic/A
 window.pwCookie.reset();               // forget consent, show banner (testing)
 
 document.addEventListener('pwcm:save', e => console.log(e.detail.consent, e.detail.revoked));
-// also: pwcm:init, pwcm:show, pwcm:hide, pwcm:allow-once
+// also: pwcm:init, pwcm:show, pwcm:hide, pwcm:allow-once, pwcm:gpc
 ```
 
 Body classes when consent is granted: `consent-necessary`, `consent-statistics`, etc. — useful for CSS-only conditional UI. `window.pwCookie` and the `pwcm:*` event names are fixed even when the CSS class prefix is changed (see Common Mistakes).
@@ -200,9 +202,10 @@ Ask before:
 - changing the consent model (`consent_model` opt-in/opt-out, or enabling/configuring `geo_mode`) — this is a legal-compliance decision, not a styling one;
 - adding or removing entries in the tracker/domain block-rule list, or hooking `getBlockRules`;
 - disabling consent-first auto-blocking;
-- enabling or configuring the consent log (stores hashed IPs and timestamps);
+- enabling or configuring the consent log (stores random consent IDs, choices, timestamps and truncated user agents);
 - changing `respect_gpc`/`respect_dnt` behavior;
 - changing the CSS class prefix on a live site (affects any custom CSS/JS the site already has targeting `.pwcm-*`);
+- setting or changing the consent cookie domain (all matching subdomains gain read/write access and must share category/version semantics);
 - installing `TextformatterCookie` on fields that already contain untrusted or third-party-authored embed markup without reviewing what it will gate.
 
 ## High Risk Or Destructive
@@ -226,6 +229,11 @@ Treat these as high risk and require a clear user request plus a rollback plan:
 - Do not assume a CSS `stroke-width` on an SVG path renders at face value if the path sits inside a scaling `<g transform="matrix(...)">` — the stroke is scaled by that same transform, so a value that looks reasonable in isolation can render nearly invisible (or, overcorrected, as a blob). Measure rendered ink coverage (or compare directly against a reference icon at the same size) rather than guessing a stroke-width by the numbers alone.
 - Do not add `design_*`/`icon_*` keys as visible fields in `CookieConfig::getInputfields()` — they are intentionally saved only through `ProcessCookie`'s config-merge (`$modules->saveConfig`), which preserves unlisted keys; adding them as config-screen fields would create two competing UIs for the same settings.
 - Do not forget that placeholders (`.pwcm-ph`) render *outside* `.pwcm-root` in the DOM — any new CSS custom property must be emitted for both selectors (`buildCssVars()` already does this; keep new vars in the same list) or placeholders will silently fall back to the `:root`-level default.
+- Do not remove or narrow `cookie_domain` without a migration that expires the old cookie using its former `Domain` attribute (or changes `cookie_name`); a host-only cookie write cannot delete an existing parent-domain cookie.
+- Do not apply compact-output processing to the full rendered page. It is deliberately scoped to Cookie's own inline CSS and banner fragment so template whitespace, inline scripts and third-party markup remain untouched.
+- Do not treat a consent ID as proof of identity or authorization. It is a client-visible correlation identifier for the latest saved consent record.
+- Upgrading from 1.2.x removes the legacy `ip_hash` column after assigning IDs to existing rows; back up that table first when the hashes must be retained for an external audit.
+- Keep `assets/cookie.min.css` regenerated from `assets/cookie.css` with a real CSS minifier whenever the source stylesheet changes; compact output deliberately uses the shipped asset rather than risky runtime regex minification.
 
 ## Layer Map
 

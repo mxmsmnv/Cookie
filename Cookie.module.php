@@ -20,7 +20,7 @@
  *
  * JS API: window.pwCookie — show(), showPreferences(), hide(), refresh(), getConsent(),
  * hasConsent(cat), allow(cat), revoke(cat), acceptAll(), rejectAll(), reset()
- * Events on document: pwcm:init, pwcm:show, pwcm:hide, pwcm:save, pwcm:allow-once
+ * Events on document: pwcm:init, pwcm:show, pwcm:hide, pwcm:save, pwcm:allow-once, pwcm:gpc
  *
  * @author Cookie module contributors
  * @license MPL-2.0
@@ -41,7 +41,7 @@ class Cookie extends WireData implements Module {
 		return [
 			'title' => 'Cookie',
 			'summary' => 'Privacy & cookie consent management: banner, category-based async loading of scripts/embeds, consent log, Google Consent Mode v2, visual widget builder.',
-			'version' => '1.1.2',
+			'version' => '1.3.0',
 			'author' => 'Cookie module contributors',
 			'href' => 'https://github.com/mxmsmnv/Cookie',
 			'icon' => 'shield',
@@ -57,7 +57,7 @@ class Cookie extends WireData implements Module {
 	 * ================================================================ */
 
 	public function init() {
-		if($this->is_active && $this->geo_mode) {
+		if($this->is_active && ($this->geo_mode || $this->respect_gpc)) {
 			$this->wire()->addHook(self::GEO_CONFIG_ENDPOINT, $this, 'hookGeoConfig');
 		}
 
@@ -150,7 +150,8 @@ class Cookie extends WireData implements Module {
 		$tpl->set('t', $this->getTexts());
 		$tpl->set('design', $this->getDesign());
 		$tpl->set('iconSvg', $this->getIconSvg($this->icon_type));
-		return $tpl->render();
+		$out = $tpl->render();
+		return $this->compact_output && !$preview ? $this->compactHtmlFragment($out) : $out;
 	}
 
 	/**
@@ -202,7 +203,8 @@ class Cookie extends WireData implements Module {
 			$out .= "<link rel=\"stylesheet\" href=\"{$url}\">\n";
 		} else {
 			// inline (also fallback when prefix was customized — class names are rewritten)
-			$css = file_get_contents($this->assetPath('cookie.css'));
+			$cssFile = $this->compact_output ? 'cookie.min.css' : 'cookie.css';
+			$css = file_get_contents($this->assetPath($cssFile));
 			if($prefix !== 'pwcm') $css = str_replace('pwcm', $prefix, $css);
 			$out .= "<style>{$css}</style>\n";
 		}
@@ -210,6 +212,51 @@ class Cookie extends WireData implements Module {
 		$out .= "<style>{$this->buildCssVars()}</style>\n";
 		if($this->custom_css) $out .= "<style>{$this->custom_css}</style>\n";
 		return $out;
+	}
+
+	/**
+	 * Compact a trusted HTML fragment without changing text-node whitespace.
+	 * Only formatting between tags and whitespace inside tags is collapsed.
+	 */
+	protected function compactHtmlFragment($html) {
+		$html = preg_replace('/>\s+</', '><', (string) $html);
+		return preg_replace_callback('/<[^>]+>/s', function($match) {
+			$tag = trim($match[0]);
+			$out = '';
+			$quote = '';
+			$escaped = false;
+			$pendingSpace = false;
+			$length = strlen($tag);
+			for($i = 0; $i < $length; $i++) {
+				$char = $tag[$i];
+				if($quote !== '') {
+					$out .= $char;
+					if($escaped) {
+						$escaped = false;
+					} elseif($char === '\\') {
+						$escaped = true;
+					} elseif($char === $quote) {
+						$quote = '';
+					}
+					continue;
+				}
+				if($char === '"' || $char === "'") {
+					if($pendingSpace && $out !== '' && substr($out, -1) !== '<') $out .= ' ';
+					$pendingSpace = false;
+					$quote = $char;
+					$out .= $char;
+					continue;
+				}
+				if(ctype_space($char)) {
+					$pendingSpace = true;
+					continue;
+				}
+				if($pendingSpace && $out !== '' && substr($out, -1) !== '<' && $char !== '>') $out .= ' ';
+				$pendingSpace = false;
+				$out .= $char;
+			}
+			return $out;
+		}, $html);
 	}
 
 	protected function renderCoreJs() {
@@ -272,7 +319,7 @@ class Cookie extends WireData implements Module {
 			'txt_banner_title', 'txt_banner_text',
 			'txt_btn_accept_all', 'txt_btn_reject', 'txt_btn_prefs',
 			'txt_prefs_title', 'txt_prefs_text', 'txt_btn_save', 'txt_close',
-			'txt_msg_saved', 'txt_details',
+			'txt_msg_saved', 'txt_gpc_honored', 'txt_consent_id', 'txt_details',
 			'txt_ph_message', 'txt_ph_load', 'txt_ph_always',
 			'txt_icon_aria', 'txt_privacy', 'txt_imprint',
 			'link_privacy', 'link_imprint',
@@ -413,7 +460,7 @@ class Cookie extends WireData implements Module {
 
 	/**
 	 * Full module configuration as a portable array (for moving settings
-	 * between sites). The per-site IP-hash salt is intentionally excluded.
+	 * between sites). Consent-log records are intentionally excluded.
 	 * @return array
 	 */
 	public function exportSettings() {
@@ -422,7 +469,6 @@ class Cookie extends WireData implements Module {
 		if(!is_array($config)) $config = [];
 		$settings = [];
 		foreach(array_keys($defaults) as $key) {
-			if($key === 'log_salt') continue; // per-site secret
 			$settings[$key] = array_key_exists($key, $config) ? $config[$key] : $defaults[$key];
 		}
 		$info = self::getModuleInfo();
@@ -436,8 +482,8 @@ class Cookie extends WireData implements Module {
 
 	/**
 	 * Merge imported settings into the module config. Only keys that exist in
-	 * the config schema are applied (unknown keys are ignored); the IP-hash salt
-	 * is never overwritten.
+	 * the config schema are applied (unknown keys are ignored). Legacy log-salt
+	 * values are ignored because current releases do not process visitor IPs.
 	 * @param array $data output of exportSettings() or a bare settings array
 	 * @return array ['applied' => int, 'skipped' => int]
 	 */
@@ -608,18 +654,21 @@ class Cookie extends WireData implements Module {
 		return [
 			'prefix' => $this->cssPrefix(),
 			'cookieName' => $this->cookieName(),
+			'cookieDomain' => $this->cookieDomain(),
 			'version' => (int) $this->version,
 			'expireDays' => (int) $this->consent_expire_days,
 			'model' => $model === 'optout' ? 'optout' : 'optin',
 			'gpc' => (bool) $this->respect_gpc,
+			'gpcSignal' => false,
 			'dnt' => (bool) $this->respect_dnt,
 			'bots' => (bool) $this->detect_bots,
 			'messageTimeout' => (int) $this->message_timeout,
 			// 'none' region: no applicable law → never auto-show, widget stays reachable
 			'autoShow' => $model !== 'none' && $this->allowBanner($this->wire()->page),
-			'geoConfigUrl' => $this->geo_mode
+			'geoConfigUrl' => ($this->geo_mode || $this->respect_gpc)
 				? rtrim($this->wire()->config->urls->root, '/') . self::GEO_CONFIG_ENDPOINT
 				: '',
+			'showConsentId' => (bool) $this->show_consent_id && (bool) $this->enable_logging,
 			'bodyClasses' => (bool) $this->body_classes,
 			'observe' => (bool) $this->observe_dom,
 			'reloadOnRevoke' => (bool) $this->reload_on_revoke,
@@ -657,11 +706,8 @@ class Cookie extends WireData implements Module {
 	/**
 	 * Resolve the consent model for the current visitor.
 	 * With geo mode off, the static `consent_model` setting is used. With geo
-	 * mode on, the visitor's country decides: opt-in (GDPR regions), opt-out
-	 * (US-style regions), or a default for everyone else. Hookable.
-	 *
-	 * NOTE: with a full-page cache (ProCache) the emitted config is shared
-	 * between visitors — vary the cache by country or exclude the config script.
+	 * mode on, subdivision rules are checked before country rules, followed by
+	 * the configured default. Hookable and resolved through the no-store endpoint.
 	 *
 	 * @return string 'optin' | 'optout' | 'none'
 	 */
@@ -670,6 +716,11 @@ class Cookie extends WireData implements Module {
 		if(!$this->geo_mode) return $static;
 
 		$country = $this->detectCountry();
+		$region = $this->detectRegion($country);
+		if($region) {
+			if(in_array($region, $this->geoRegionList('geo_optout_regions'), true)) return 'optout';
+			if(in_array($region, $this->geoRegionList('geo_optin_regions'), true)) return 'optin';
+		}
 		if($country) {
 			if(in_array($country, $this->geoCountryList('geo_optout_countries'), true)) return 'optout';
 			if(in_array($country, $this->geoCountryList('geo_optin_countries'), true)) return 'optin';
@@ -696,6 +747,30 @@ class Cookie extends WireData implements Module {
 	}
 
 	/**
+	 * Detect an ISO-3166-2 subdivision code such as CA-QC.
+	 * A bare region header value is combined with the detected country. Override
+	 * with `$config->geoRegion` or hook Cookie::detectRegion.
+	 * @param string $country optional already-detected ISO country code
+	 * @return string subdivision code or '' when unknown
+	 */
+	public function ___detectRegion($country = '') {
+		$value = $this->wire()->config->geoRegion;
+		if(!$value) {
+			$header = trim((string) $this->geo_region_header) ?: 'CF-Region-Code';
+			$key = 'HTTP_' . strtoupper(str_replace('-', '_', $header));
+			$value = $_SERVER[$key] ?? '';
+		}
+		$value = strtoupper(str_replace('_', '-', trim((string) $value)));
+		if(!$value) return '';
+		if(preg_match('/^[A-Z]{2}-[A-Z0-9]{1,3}$/', $value)) return $value;
+		$country = strtoupper(trim((string) ($country ?: $this->detectCountry())));
+		if(preg_match('/^[A-Z]{2}$/', $country) && preg_match('/^[A-Z0-9]{1,3}$/', $value)) {
+			return $country . '-' . $value;
+		}
+		return '';
+	}
+
+	/**
 	 * Parse a config field of country codes (comma/space/newline separated).
 	 * @param string $field config field name
 	 * @return array uppercase 2-letter codes
@@ -707,6 +782,26 @@ class Cookie extends WireData implements Module {
 			if(preg_match('/^[A-Z]{2}$/', $code)) $codes[$code] = true;
 		}
 		return array_keys($codes);
+	}
+
+	/**
+	 * Parse a config field of ISO-3166-2 subdivision codes.
+	 */
+	public function geoRegionList($field) {
+		$codes = [];
+		foreach(preg_split('/[\s,]+/', strtoupper((string) $this->get($field))) as $code) {
+			$code = str_replace('_', '-', trim($code));
+			if(preg_match('/^[A-Z]{2}-[A-Z0-9]{1,3}$/', $code)) $codes[$code] = true;
+		}
+		return array_keys($codes);
+	}
+
+	/**
+	 * Whether the request carries the standardized Sec-GPC opt-out signal.
+	 * Hookable for trusted proxy/server integrations.
+	 */
+	public function ___detectGpc() {
+		return trim((string) ($_SERVER['HTTP_SEC_GPC'] ?? '')) === '1';
 	}
 
 	/**
@@ -727,6 +822,7 @@ class Cookie extends WireData implements Module {
 		$response = json_encode([
 			'model' => $model === 'optout' ? 'optout' : 'optin',
 			'autoShow' => $model !== 'none' && $this->allowBanner($this->wire()->page),
+			'gpc' => (bool) $this->respect_gpc && $this->detectGpc(),
 		], JSON_UNESCAPED_SLASHES);
 		header_remove('Set-Cookie');
 		return $response;
@@ -773,6 +869,25 @@ class Cookie extends WireData implements Module {
 	public function cookieName() {
 		$name = $this->wire()->sanitizer->name((string) $this->cookie_name);
 		return $name ?: 'pwcm_consent';
+	}
+
+	/**
+	 * Optional parent domain used to share consent with trusted subdomains.
+	 * Returns an empty string unless the configured value is a valid parent of
+	 * the current HTTP host. A leading dot is accepted for backwards familiarity
+	 * but omitted from output because modern browsers ignore it.
+	 */
+	public function cookieDomain() {
+		$domain = strtolower(ltrim(trim((string) $this->cookie_domain), '.'));
+		if($domain === '' || $domain === 'localhost') return '';
+		if(filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) === false) return '';
+
+		$host = strtolower(trim((string) $this->wire()->config->httpHost));
+		$host = preg_replace('/:\d+$/', '', $host);
+		if($host === '' || filter_var($host, FILTER_VALIDATE_IP)) return '';
+		if($host !== $domain && !str_ends_with($host, '.' . $domain)) return '';
+
+		return $domain;
 	}
 
 	/* ==================================================================
@@ -1186,7 +1301,9 @@ class Cookie extends WireData implements Module {
 		$raw = file_get_contents('php://input');
 		if(!$raw || strlen($raw) > 2048) return 'invalid';
 		$data = json_decode($raw, true);
-		if(!is_array($data) || !isset($data['v']) || !isset($data['g']) || !is_array($data['g'])) return 'invalid';
+		if(!is_array($data) || !isset($data['i'], $data['v'], $data['g']) || !is_array($data['g'])) return 'invalid';
+		$consentId = strtolower(trim((string) $data['i']));
+		if(!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $consentId)) return 'invalid';
 
 		$granted = [];
 		foreach($data['g'] as $key => $value) {
@@ -1194,17 +1311,15 @@ class Cookie extends WireData implements Module {
 			if($key) $granted[$key] = (bool) $value;
 		}
 
-		$ip = $this->wire()->session->getIP();
-		$ipHash = hash('sha256', $ip . (string) $this->log_salt);
 		$ua = isset($_SERVER['HTTP_USER_AGENT']) ? substr((string) $_SERVER['HTTP_USER_AGENT'], 0, 255) : '';
 
 		try {
 			$db = $this->wire()->database;
-			$query = $db->prepare('INSERT INTO ' . self::LOG_TABLE . ' (created, version, consent, ip_hash, ua) VALUES (NOW(), :v, :c, :ip, :ua)');
+			$query = $db->prepare('INSERT INTO ' . self::LOG_TABLE . ' (created, version, consent, consent_id, ua) VALUES (NOW(), :v, :c, :consent_id, :ua)');
 			$query->execute([
 				':v' => (int) $data['v'],
 				':c' => json_encode($granted, JSON_UNESCAPED_UNICODE),
-				':ip' => $ipHash,
+				':consent_id' => $consentId,
 				':ua' => $ua,
 			]);
 			// occasionally purge records older than retention period
@@ -1226,6 +1341,19 @@ class Cookie extends WireData implements Module {
 	 * ================================================================ */
 
 	public function ___install() {
+		$this->ensureLogSchema();
+	}
+
+	public function ___upgrade($fromVersion, $toVersion) {
+		$this->ensureLogSchema();
+	}
+
+	/**
+	 * Create or migrate the consent log without retaining visitor IP hashes.
+	 * Existing rows receive random legacy identifiers before the old column is
+	 * removed; new rows use the identifier stored in the visitor's consent cookie.
+	 */
+	protected function ensureLogSchema() {
 		$db = $this->wire()->database;
 		$engine = $this->wire()->config->dbEngine ?: 'InnoDB';
 		$charset = $this->wire()->config->dbCharset ?: 'utf8mb4';
@@ -1235,16 +1363,28 @@ class Cookie extends WireData implements Module {
 				created DATETIME NOT NULL,
 				version INT UNSIGNED NOT NULL DEFAULT 1,
 				consent VARCHAR(1024) NOT NULL DEFAULT '',
-				ip_hash CHAR(64) NOT NULL DEFAULT '',
+				consent_id CHAR(36) NOT NULL DEFAULT '',
 				ua VARCHAR(255) NOT NULL DEFAULT '',
 				PRIMARY KEY (id),
 				KEY created (created)
 			) ENGINE={$engine} DEFAULT CHARSET={$charset}
 		");
-		// unique salt for IP anonymization
+
+		$columns = [];
+		foreach($db->query('SHOW COLUMNS FROM ' . self::LOG_TABLE)->fetchAll(\PDO::FETCH_ASSOC) as $column) {
+			$columns[$column['Field']] = true;
+		}
+		if(!isset($columns['consent_id'])) {
+			$db->exec('ALTER TABLE ' . self::LOG_TABLE . " ADD consent_id CHAR(36) NOT NULL DEFAULT '' AFTER consent");
+		}
+		$db->exec('UPDATE ' . self::LOG_TABLE . " SET consent_id = UUID() WHERE consent_id = ''");
+		if(isset($columns['ip_hash'])) {
+			$db->exec('ALTER TABLE ' . self::LOG_TABLE . ' DROP COLUMN ip_hash');
+		}
+
 		$configData = $this->wire()->modules->getConfig($this);
-		if(empty($configData['log_salt'])) {
-			$configData['log_salt'] = bin2hex(random_bytes(16));
+		if(is_array($configData) && array_key_exists('log_salt', $configData)) {
+			unset($configData['log_salt']);
 			$this->wire()->modules->saveConfig($this, $configData);
 		}
 	}

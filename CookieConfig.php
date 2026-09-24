@@ -19,17 +19,22 @@ class CookieConfig extends ModuleConfig {
 			'version' => 1,
 			'consent_expire_days' => 180,
 			'cookie_name' => 'pwcm_consent',
+			'cookie_domain' => '',
 			'css_prefix' => 'pwcm',
 			'respect_gpc' => 1,
 			'respect_dnt' => 0,
 			// geo mode
 			'geo_mode' => 0,
 			'geo_header' => 'CF-IPCountry',
+			'geo_region_header' => 'CF-Region-Code',
 			'geo_default_model' => 'optin',
 			// EU/EEA + UK + Switzerland (GDPR/ePrivacy, UK GDPR/PECR, nFADP) + Brazil (LGPD)
 			'geo_optin_countries' => 'AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE IS LI NO GB CH BR',
 			// California + other US state privacy laws
 			'geo_optout_countries' => 'US',
+			// ISO 3166-2 subdivisions; region rules take priority over country rules
+			'geo_optin_regions' => 'CA-QC',
+			'geo_optout_regions' => '',
 			'detect_bots' => 1,
 			'message_timeout' => 1500,
 			'hide_when_only_necessary' => 1,
@@ -38,6 +43,7 @@ class CookieConfig extends ModuleConfig {
 			'render_manually' => 0,
 			'output_js' => 'file',
 			'output_css' => 'inline',
+			'compact_output' => 1,
 			'body_classes' => 1,
 			'observe_dom' => 1,
 			'reload_on_revoke' => 1,
@@ -49,7 +55,7 @@ class CookieConfig extends ModuleConfig {
 			'consent_mode_map' => '',
 			'enable_logging' => 0,
 			'log_retention_days' => 365,
-			'log_salt' => '',
+			'show_consent_id' => 1,
 			'embed_map' => "youtube.com=external_media\nyoutube-nocookie.com=external_media\nyoutu.be=external_media\nvimeo.com=external_media\nplayer.vimeo.com=external_media\ngoogle.com/maps=external_media\nmaps.google.com=external_media\nopenstreetmap.org=external_media",
 			'tracker_map' => "# statistics\ngoogletagmanager.com=statistics\ngoogle-analytics.com=statistics\nmc.yandex.ru=statistics\ncdn.matomo.cloud=statistics\nstatic.hotjar.com=statistics\nclarity.ms=statistics\nplausible.io/js=statistics\n# marketing\nconnect.facebook.net=marketing\ngoogleadservices.com=marketing\ngooglesyndication.com=marketing\ndoubleclick.net=marketing\nanalytics.tiktok.com=marketing\nstatic.ads-twitter.com=marketing\nsnap.licdn.com=marketing\nads.vk.com=marketing",
 
@@ -83,6 +89,8 @@ class CookieConfig extends ModuleConfig {
 			'txt_btn_save' => $this->_('Save preferences'),
 			'txt_close' => $this->_('Close'),
 			'txt_msg_saved' => $this->_('Your preferences have been saved.'),
+			'txt_gpc_honored' => $this->_('Your opt-out request was honored via Global Privacy Control.'),
+			'txt_consent_id' => $this->_('Consent ID'),
 			'txt_details' => $this->_('Details'),
 			'txt_ph_message' => $this->_('This content is provided by an external service. It loads only after you allow the “{category}” category.'),
 			'txt_ph_load' => $this->_('Load once'),
@@ -207,7 +215,7 @@ class CookieConfig extends ModuleConfig {
 		$f = $modules->get('InputfieldCheckbox');
 		$f->name = 'respect_gpc';
 		$f->label = $this->_('Respect Global Privacy Control (GPC)');
-		$f->description = $this->_('Browsers may send a GPC signal, a legally binding opt-out under CCPA/CPRA and Colorado CPA. Opt-in model: treated like Do Not Track. Opt-out model: the marketing category is refused automatically.');
+		$f->description = $this->_('Honor both the Sec-GPC request header and navigator.globalPrivacyControl. Optional processing is refused and a temporary confirmation message replaces the normal banner.');
 		$f->columnWidth = 50;
 		$fs->add($f);
 
@@ -221,16 +229,22 @@ class CookieConfig extends ModuleConfig {
 
 		$f = $modules->get('InputfieldCheckbox');
 		$f->name = 'geo_mode';
-		$f->label = $this->_('Choose the consent model by visitor country');
-		$f->description = $this->_('Overrides the fixed “Consent model” above: opt-in for GDPR regions, opt-out for US-style regions, and a default for the rest. Detected from the geo header below.');
-		$f->notes = $this->_('With full-page caching (ProCache) the emitted config is shared between visitors — vary the cache by country or exclude the Cookie config script, otherwise everyone gets the first visitor’s region.');
+		$f->label = $this->_('Choose the consent model by visitor country and region');
+		$f->description = $this->_('Overrides the fixed consent model. Subdivision rules such as CA-QC take priority over country rules. Regional settings are resolved through a private, no-store endpoint and remain safe with full-page caching.');
 		$fs->add($f);
 
 		$f = $modules->get('InputfieldText');
 		$f->name = 'geo_header';
 		$f->label = $this->_('Country header');
 		$f->description = $this->_('HTTP header carrying the ISO country code. Cloudflare and many CDNs set CF-IPCountry. You can also set $config->geoCountry or hook Cookie::detectCountry for a GeoIP library.');
-		$f->columnWidth = 34;
+		$f->columnWidth = 25;
+		$fs->add($f);
+
+		$f = $modules->get('InputfieldText');
+		$f->name = 'geo_region_header';
+		$f->label = $this->_('Region header');
+		$f->description = $this->_('HTTP header carrying a subdivision code. Cloudflare Managed Transforms use CF-Region-Code. Bare codes such as QC are combined with the detected country.');
+		$f->columnWidth = 25;
 		$fs->add($f);
 
 		$f = $modules->get('InputfieldSelect');
@@ -241,15 +255,17 @@ class CookieConfig extends ModuleConfig {
 			'optout' => $this->_('Opt-out'),
 			'none' => $this->_('No banner'),
 		]);
-		$f->columnWidth = 33;
+		$f->columnWidth = 25;
 		$fs->add($f);
 
 		$note = $modules->get('InputfieldMarkup');
 		$note->label = $this->_('Detected now');
-		$note->columnWidth = 33;
-		$detected = $this->wire()->modules->get('Cookie')->detectCountry();
+		$note->columnWidth = 25;
+		$cookie = $this->wire()->modules->get('Cookie');
+		$detectedCountry = $cookie->detectCountry();
+		$detectedRegion = $cookie->detectRegion($detectedCountry);
 		$note->value = '<p style="padding-top:6px"><strong>' .
-			($detected ? $this->wire()->sanitizer->entities1($detected) : $this->_('(unknown)')) .
+			($detectedRegion ?: ($detectedCountry ?: $this->_('(unknown)'))) .
 			'</strong></p>';
 		$fs->add($note);
 
@@ -257,6 +273,22 @@ class CookieConfig extends ModuleConfig {
 		$f->name = 'geo_optin_countries';
 		$f->label = $this->_('Opt-in countries');
 		$f->description = $this->_('ISO 3166 two-letter codes, separated by spaces or commas. Visitors from these countries get the GDPR-style opt-in model.');
+		$f->rows = 2;
+		$f->columnWidth = 50;
+		$fs->add($f);
+
+		$f = $modules->get('InputfieldTextarea');
+		$f->name = 'geo_optin_regions';
+		$f->label = $this->_('Opt-in regions');
+		$f->description = $this->_('ISO 3166-2 subdivision codes such as CA-QC, separated by spaces or commas. These rules take priority over country rules.');
+		$f->rows = 2;
+		$f->columnWidth = 50;
+		$fs->add($f);
+
+		$f = $modules->get('InputfieldTextarea');
+		$f->name = 'geo_optout_regions';
+		$f->label = $this->_('Opt-out regions');
+		$f->description = $this->_('ISO 3166-2 subdivision codes. Opt-out region rules take highest priority.');
 		$f->rows = 2;
 		$f->columnWidth = 50;
 		$fs->add($f);
@@ -432,6 +464,8 @@ class CookieConfig extends ModuleConfig {
 			'txt_btn_prefs' => [$this->_('Button: preferences'), 'text', 25],
 			'txt_btn_save' => [$this->_('Button: save'), 'text', 25],
 			'txt_msg_saved' => [$this->_('Confirmation message'), 'text', 34],
+			'txt_gpc_honored' => [$this->_('GPC confirmation message'), 'text', 66],
+			'txt_consent_id' => [$this->_('Consent ID label'), 'text', 34],
 			'txt_details' => [$this->_('Label: details'), 'text', 33],
 			'txt_close' => [$this->_('Label: close'), 'text', 33],
 			'txt_ph_message' => [$this->_('Placeholder message ({category} = category label)'), 'textarea', 50],
@@ -580,7 +614,14 @@ class CookieConfig extends ModuleConfig {
 		$f = $modules->get('InputfieldCheckbox');
 		$f->name = 'enable_logging';
 		$f->label = $this->_('Consent logging');
-		$f->description = $this->_('Store anonymized consent records (hashed IP) for GDPR documentation. View & export in Setup > Cookie > Consent log.');
+		$f->description = $this->_('Store consent decisions under a random consent ID without reading or hashing the visitor IP. View and export records in Setup > Cookie > Consent log.');
+		$f->columnWidth = 50;
+		$fs->add($f);
+
+		$f = $modules->get('InputfieldCheckbox');
+		$f->name = 'show_consent_id';
+		$f->label = $this->_('Show the consent ID in preferences');
+		$f->description = $this->_('Lets visitors match their current saved choice to a consent-log record. The identifier is informational and is not authentication.');
 		$f->columnWidth = 50;
 		$fs->add($f);
 
@@ -618,21 +659,30 @@ class CookieConfig extends ModuleConfig {
 		$f = $modules->get('InputfieldText');
 		$f->name = 'cookie_name';
 		$f->label = $this->_('Consent cookie name');
-		$f->columnWidth = 34;
+		$f->columnWidth = 50;
+		$fs->add($f);
+
+		$f = $modules->get('InputfieldText');
+		$f->name = 'cookie_domain';
+		$f->label = $this->_('Consent cookie domain');
+		$f->description = $this->_('Optional parent domain shared with trusted subdomains, for example example.com. Leave empty to keep consent restricted to the current host. Do not include a scheme, port, path or leading dot.');
+		$f->notes = $this->_('Every subdomain can read and overwrite a shared consent cookie. Configure only a parent of the current host.');
+		$f->columnWidth = 50;
+		$f->collapsed = Inputfield::collapsedBlank;
 		$fs->add($f);
 
 		$f = $modules->get('InputfieldText');
 		$f->name = 'css_prefix';
 		$f->label = $this->_('CSS class prefix');
 		$f->description = $this->_('Change if ad blockers (uBlock/Brave filter lists) hide the widget.');
-		$f->columnWidth = 33;
+		$f->columnWidth = 50;
 		$fs->add($f);
 
 		$f = $modules->get('InputfieldCheckbox');
 		$f->name = 'render_manually';
 		$f->label = $this->_('Manual render mode');
 		$f->description = $this->_('Disable auto-injection; call renderHead() and renderBanner() in your templates.');
-		$f->columnWidth = 33;
+		$f->columnWidth = 50;
 		$fs->add($f);
 
 		$f = $modules->get('InputfieldRadios');
@@ -648,6 +698,13 @@ class CookieConfig extends ModuleConfig {
 		$f->label = $this->_('CSS output');
 		$f->addOptions(['inline' => $this->_('Inline (default)'), 'file' => $this->_('External file'), 'none' => $this->_('None (bring your own styles)')]);
 		$f->optionColumns = 1;
+		$f->columnWidth = 50;
+		$fs->add($f);
+
+		$f = $modules->get('InputfieldCheckbox');
+		$f->name = 'compact_output';
+		$f->label = $this->_('Compact HTML output');
+		$f->description = $this->_('Remove comments and formatting whitespace from Cookie\'s inline CSS and widget markup. Visitor-facing content and the rest of the page are unchanged.');
 		$f->columnWidth = 50;
 		$fs->add($f);
 
@@ -684,6 +741,7 @@ class CookieConfig extends ModuleConfig {
 				'txt_btn_accept_all' => 'Accept all', 'txt_btn_reject' => 'Only necessary', 'txt_btn_prefs' => 'Preferences',
 				'txt_prefs_title' => 'Privacy preferences', 'txt_prefs_text' => 'Choose which categories of cookies you allow. You can change your decision at any time.',
 				'txt_btn_save' => 'Save preferences', 'txt_close' => 'Close', 'txt_msg_saved' => 'Your preferences have been saved.',
+				'txt_gpc_honored' => 'Your opt-out request was honored via Global Privacy Control.', 'txt_consent_id' => 'Consent ID',
 				'txt_details' => 'Details',
 				'txt_ph_message' => 'This content is provided by an external service. It loads only after you allow the “{category}” category.',
 				'txt_ph_load' => 'Load once', 'txt_ph_always' => 'Always allow',
@@ -701,6 +759,7 @@ class CookieConfig extends ModuleConfig {
 				'txt_btn_accept_all' => 'Alle akzeptieren', 'txt_btn_reject' => 'Nur notwendige', 'txt_btn_prefs' => 'Einstellungen',
 				'txt_prefs_title' => 'Datenschutzeinstellungen', 'txt_prefs_text' => 'Wählen Sie, welche Cookie-Kategorien Sie zulassen. Sie können Ihre Entscheidung jederzeit ändern.',
 				'txt_btn_save' => 'Einstellungen speichern', 'txt_close' => 'Schließen', 'txt_msg_saved' => 'Ihre Einstellungen wurden gespeichert.',
+				'txt_gpc_honored' => 'Ihre Widerspruchsanfrage wurde über Global Privacy Control berücksichtigt.', 'txt_consent_id' => 'Einwilligungs-ID',
 				'txt_details' => 'Details',
 				'txt_ph_message' => 'Dieser Inhalt wird von einem externen Dienst bereitgestellt. Er wird erst geladen, wenn Sie die Kategorie „{category}“ zulassen.',
 				'txt_ph_load' => 'Einmal laden', 'txt_ph_always' => 'Immer zulassen',
@@ -718,6 +777,7 @@ class CookieConfig extends ModuleConfig {
 				'txt_btn_accept_all' => 'Tout accepter', 'txt_btn_reject' => 'Seulement nécessaires', 'txt_btn_prefs' => 'Préférences',
 				'txt_prefs_title' => 'Préférences de confidentialité', 'txt_prefs_text' => 'Choisissez les catégories de cookies que vous autorisez. Vous pouvez changer d’avis à tout moment.',
 				'txt_btn_save' => 'Enregistrer les préférences', 'txt_close' => 'Fermer', 'txt_msg_saved' => 'Vos préférences ont été enregistrées.',
+				'txt_gpc_honored' => 'Votre demande d’opposition a été respectée via Global Privacy Control.', 'txt_consent_id' => 'Identifiant de consentement',
 				'txt_details' => 'Détails',
 				'txt_ph_message' => 'Ce contenu est fourni par un service externe. Il se charge uniquement après que vous ayez autorisé la catégorie « {category} ».',
 				'txt_ph_load' => 'Charger une fois', 'txt_ph_always' => 'Toujours autoriser',
@@ -735,6 +795,7 @@ class CookieConfig extends ModuleConfig {
 				'txt_btn_accept_all' => 'Aceptar todas', 'txt_btn_reject' => 'Solo necesarias', 'txt_btn_prefs' => 'Preferencias',
 				'txt_prefs_title' => 'Preferencias de privacidad', 'txt_prefs_text' => 'Elige qué categorías de cookies permites. Puedes cambiar tu decisión en cualquier momento.',
 				'txt_btn_save' => 'Guardar preferencias', 'txt_close' => 'Cerrar', 'txt_msg_saved' => 'Tus preferencias se han guardado.',
+				'txt_gpc_honored' => 'Tu solicitud de exclusión se ha respetado mediante Global Privacy Control.', 'txt_consent_id' => 'ID de consentimiento',
 				'txt_details' => 'Detalles',
 				'txt_ph_message' => 'Este contenido lo proporciona un servicio externo. Se carga solo después de que permitas la categoría «{category}».',
 				'txt_ph_load' => 'Cargar una vez', 'txt_ph_always' => 'Permitir siempre',
@@ -752,6 +813,7 @@ class CookieConfig extends ModuleConfig {
 				'txt_btn_accept_all' => 'Accetta tutti', 'txt_btn_reject' => 'Solo necessari', 'txt_btn_prefs' => 'Preferenze',
 				'txt_prefs_title' => 'Preferenze sulla privacy', 'txt_prefs_text' => 'Scegli quali categorie di cookie consentire. Puoi cambiare la tua decisione in qualsiasi momento.',
 				'txt_btn_save' => 'Salva preferenze', 'txt_close' => 'Chiudi', 'txt_msg_saved' => 'Le tue preferenze sono state salvate.',
+				'txt_gpc_honored' => 'La tua richiesta di esclusione è stata rispettata tramite Global Privacy Control.', 'txt_consent_id' => 'ID consenso',
 				'txt_details' => 'Dettagli',
 				'txt_ph_message' => 'Questo contenuto è fornito da un servizio esterno. Viene caricato solo dopo aver consentito la categoria «{category}».',
 				'txt_ph_load' => 'Carica una volta', 'txt_ph_always' => 'Consenti sempre',
@@ -769,6 +831,7 @@ class CookieConfig extends ModuleConfig {
 				'txt_btn_accept_all' => 'Alles accepteren', 'txt_btn_reject' => 'Alleen noodzakelijke', 'txt_btn_prefs' => 'Voorkeuren',
 				'txt_prefs_title' => 'Privacyvoorkeuren', 'txt_prefs_text' => 'Kies welke cookiecategorieën u toestaat. U kunt uw keuze op elk moment wijzigen.',
 				'txt_btn_save' => 'Voorkeuren opslaan', 'txt_close' => 'Sluiten', 'txt_msg_saved' => 'Uw voorkeuren zijn opgeslagen.',
+				'txt_gpc_honored' => 'Uw opt-outverzoek is via Global Privacy Control uitgevoerd.', 'txt_consent_id' => 'Toestemmings-ID',
 				'txt_details' => 'Details',
 				'txt_ph_message' => 'Deze inhoud wordt geleverd door een externe dienst. Deze wordt pas geladen nadat u de categorie «{category}» toestaat.',
 				'txt_ph_load' => 'Eenmalig laden', 'txt_ph_always' => 'Altijd toestaan',
@@ -786,6 +849,7 @@ class CookieConfig extends ModuleConfig {
 				'txt_btn_accept_all' => 'Zaakceptuj wszystkie', 'txt_btn_reject' => 'Tylko niezbędne', 'txt_btn_prefs' => 'Preferencje',
 				'txt_prefs_title' => 'Preferencje prywatności', 'txt_prefs_text' => 'Wybierz, na które kategorie plików cookie zezwalasz. Możesz zmienić decyzję w dowolnym momencie.',
 				'txt_btn_save' => 'Zapisz preferencje', 'txt_close' => 'Zamknij', 'txt_msg_saved' => 'Twoje preferencje zostały zapisane.',
+				'txt_gpc_honored' => 'Twoje żądanie rezygnacji zostało uwzględnione przez Global Privacy Control.', 'txt_consent_id' => 'ID zgody',
 				'txt_details' => 'Szczegóły',
 				'txt_ph_message' => 'Ta zawartość jest dostarczana przez usługę zewnętrzną. Zostanie załadowana dopiero po wyrażeniu zgody na kategorię „{category}”.',
 				'txt_ph_load' => 'Załaduj raz', 'txt_ph_always' => 'Zawsze zezwalaj',
@@ -803,6 +867,7 @@ class CookieConfig extends ModuleConfig {
 				'txt_btn_accept_all' => 'Принять все', 'txt_btn_reject' => 'Только необходимые', 'txt_btn_prefs' => 'Настройки',
 				'txt_prefs_title' => 'Настройки конфиденциальности', 'txt_prefs_text' => 'Выберите, какие категории cookie разрешить. Решение можно изменить в любой момент.',
 				'txt_btn_save' => 'Сохранить настройки', 'txt_close' => 'Закрыть', 'txt_msg_saved' => 'Ваши настройки сохранены.',
+				'txt_gpc_honored' => 'Ваш запрос на отказ учтён через Global Privacy Control.', 'txt_consent_id' => 'ID согласия',
 				'txt_details' => 'Подробнее',
 				'txt_ph_message' => 'Этот контент предоставляется внешним сервисом. Он загрузится только после того, как вы разрешите категорию «{category}».',
 				'txt_ph_load' => 'Загрузить один раз', 'txt_ph_always' => 'Всегда разрешать',

@@ -1,0 +1,15 @@
+{
+	"name": "processwire-cookie-tests",
+	"private": true,
+	"scripts": {
+		"build:css": "cleancss -o assets/cookie.min.css assets/cookie.css",
+		"test": "npm run test:syntax && npm run test:php && npm run test:e2e",
+		"test:syntax": "php -l Cookie.module.php && php -l CookieConfig.php && php -l ProcessCookie.module.php && php -l TextformatterCookie.module.php && node --check assets/cookie.js && node --check assets/admin/builder.js && node --check tests/e2e-cookie-domain.cjs && node --check tests/e2e-admin-theme.cjs && node --check tests/e2e-privacy-features.cjs",
+		"test:php": "php tests/cookie-domain.php && php tests/geo-region.php && php tests/consent-log-schema.php && php tests/compact-output.php && php tests/admin-dark-mode.php",
+		"test:e2e": "node tests/e2e-cookie-domain.cjs && node tests/e2e-admin-theme.cjs && node tests/e2e-privacy-features.cjs"
+	},
+	"devDependencies": {
+		"clean-css-cli": "^5.6.3",
+		"playwright": "1.62.1"
+	}
+}

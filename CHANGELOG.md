@@ -2,6 +2,41 @@
 
 All notable changes to Cookie are documented here.
 
+## [1.3.0] - 2026-09-24
+
+### Added
+
+- Added an enabled-by-default compact-output option that removes comments and
+  formatting whitespace from Cookie's inline CSS and public widget markup
+  without modifying the rest of the rendered page.
+- Added ISO 3166-2 subdivision rules to geo mode, with region rules taking
+  priority over country rules and Quebec (`CA-QC`) included as opt-in by
+  default.
+- Added server-side `Sec-GPC: 1` detection alongside
+  `navigator.globalPrivacyControl`, plus a configurable temporary confirmation
+  shown instead of the normal banner when the signal is honored.
+- Added random consent IDs to saved choices, the public JS state, consent-log
+  records and exports, with an option to display the current ID in preferences.
+- Added an optional consent-cookie domain setting so a consent choice can be
+  shared with trusted subdomains using the same category and policy contract.
+- Added validation that accepts only a valid parent of the current HTTP host.
+
+### Changed
+
+- Consent logging no longer reads or hashes visitor IP addresses. Upgrading
+  assigns random IDs to legacy rows, removes the old `ip_hash` column and
+  deletes the obsolete per-site hash salt.
+- Geo and GPC request state is resolved through the private no-store endpoint,
+  including when geo mode itself is disabled.
+- Saving a shared consent cookie removes a legacy host-only cookie with the
+  same name, and resetting consent clears both scopes.
+
+### Fixed
+
+- Made the Design Studio and supporting admin screens follow ProcessWire's
+  light, dark and automatic admin color schemes while keeping the simulated
+  frontend preview independent.
+
 ## [1.1.2] - 2026-07-30
 
 ### Fixed

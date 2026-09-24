@@ -6,7 +6,7 @@
  * fires Google Consent Mode updates and dispatches CustomEvents.
  *
  * Public API: window.pwCookie
- * Events (on document): pwcm:init, pwcm:show, pwcm:hide, pwcm:save, pwcm:allow-once
+ * Events (on document): pwcm:init, pwcm:show, pwcm:hide, pwcm:save, pwcm:allow-once, pwcm:gpc
  */
 (function () {
 	"use strict";
@@ -37,13 +37,19 @@
 			banner: this.root.querySelector("." + P + "-banner"),
 			prefs: this.root.querySelector("." + P + "-prefs"),
 			toast: this.root.querySelector("." + P + "-toast"),
-			fab: this.root.querySelector("." + P + "-fab")
+			fab: this.root.querySelector("." + P + "-fab"),
+			consentId: this.root.querySelector("." + P + "-consent-id")
 		};
 		this.tpl = document.getElementById(P + "-ph-tpl");
 
 		var stored = this.readConsent();
 		this.consent = stored.consent;
 		this.valid = stored.valid;
+		this.gpcActive = cfg.gpc && this.hasGpc();
+		if (this.gpcActive) {
+			this.ephemeral = true;
+			this.enforceGpc();
+		}
 
 		this.bindActions();
 		this.bindKeydown();
@@ -58,8 +64,13 @@
 			this.show();
 		}
 		this.updateFab();
+		this.updateConsentId();
 		if (cfg.observe) this.observeDom();
 		this.emit("pwcm:init", { consent: this.getConsent() });
+		if (this.gpcActive) {
+			this.showToast(this.el.toast && this.el.toast.getAttribute("data-gpc-message"));
+			this.emit("pwcm:gpc", { consent: this.getConsent() });
+		}
 	}
 
 	CookieManager.prototype = {
@@ -78,11 +89,33 @@
 			if (grantAll && cfg.gpc && this.hasGpc() && typeof g.marketing === "boolean") {
 				g.marketing = false;
 			}
-			return { v: 0, t: null, g: g };
+			return { i: "", v: 0, t: null, g: g };
 		},
 
 		hasGpc: function () {
-			return navigator.globalPrivacyControl === true || navigator.globalPrivacyControl === "1";
+			return cfg.gpcSignal === true || navigator.globalPrivacyControl === true || navigator.globalPrivacyControl === "1";
+		},
+
+		enforceGpc: function () {
+			if (this.gpcActive && typeof this.consent.g.marketing === "boolean") {
+				this.consent.g.marketing = false;
+			}
+		},
+
+		newConsentId: function () {
+			if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+			var bytes = new Uint8Array(16);
+			if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+				window.crypto.getRandomValues(bytes);
+			} else {
+				for (var i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+			}
+			bytes[6] = (bytes[6] & 15) | 64;
+			bytes[8] = (bytes[8] & 63) | 128;
+			var hex = [];
+			for (var j = 0; j < bytes.length; j++) hex.push((bytes[j] + 256).toString(16).slice(1));
+			return hex.slice(0, 4).join("") + "-" + hex.slice(4, 6).join("") + "-" +
+				hex.slice(6, 8).join("") + "-" + hex.slice(8, 10).join("") + "-" + hex.slice(10).join("");
 		},
 
 		readConsent: function () {
@@ -103,6 +136,9 @@
 				if (typeof data.g[key] === "boolean") def.g[key] = data.g[key];
 			}
 			for (var i = 0; i < this.requiredKeys.length; i++) def.g[this.requiredKeys[i]] = true;
+			if (typeof data.i === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.i)) {
+				def.i = data.i.toLowerCase();
+			}
 			def.v = parseInt(data.v, 10) || 0;
 			def.t = parseInt(data.t, 10) || null;
 
@@ -115,14 +151,22 @@
 			if (this.ephemeral) return;
 			var days = cfg.expireDays > 0 ? cfg.expireDays : 180;
 			var expires = new Date(Date.now() + days * MS_DAY).toUTCString();
+			var name = cfg.cookieName || "pwcm_consent";
+			var domain = cfg.cookieDomain ? ";Domain=" + cfg.cookieDomain : "";
 			var value = encodeURIComponent(JSON.stringify({
+				i: this.consent.i,
 				v: this.consent.v,
 				t: this.consent.t,
 				g: this.consent.g
 			}));
 			var secure = location.protocol === "https:" ? ";Secure" : "";
-			document.cookie = (cfg.cookieName || "pwcm_consent") + "=" + value +
-				";expires=" + expires + ";path=/;SameSite=Lax" + secure;
+			if (domain) {
+				// Remove a legacy host-only cookie before creating its domain-scoped
+				// replacement. Otherwise both cookies can coexist under the same name.
+				document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax" + secure;
+			}
+			document.cookie = name + "=" + value + ";expires=" + expires +
+				";path=/;SameSite=Lax" + secure + domain;
 		},
 
 		getCookie: function (name) {
@@ -135,12 +179,13 @@
 			var isBot = cfg.bots && BOT_RE.test(navigator.userAgent);
 			var isDnt = cfg.dnt && (navigator.doNotTrack === "1" || window.doNotTrack === "1");
 			// in the opt-in model a GPC signal is honored like Do Not Track
-			var isGpc = cfg.gpc && cfg.model !== "optout" && this.hasGpc();
+			var isGpc = cfg.gpc && this.hasGpc();
 			if (!isBot && !isDnt && !isGpc) return false;
 			this.ephemeral = true;
 			this.consent = this.defaultConsent();
 			this.valid = true;
 			this.updateBodyClasses();
+			this.applyConsentMode();
 			return true;
 		},
 
@@ -151,6 +196,8 @@
 					if (this.prevSnapshot[key]) prevGranted.push(key);
 				}
 			}
+			this.enforceGpc();
+			if (!this.ephemeral) this.consent.i = this.newConsentId();
 			this.consent.v = cfg.version || 1;
 			this.consent.t = Date.now();
 			this.writeConsent();
@@ -167,6 +214,7 @@
 			this.applyConsentMode();
 			this.process();
 			this.hideAll();
+			this.updateConsentId();
 			this.logConsent();
 			this.triggerCustomFunction();
 			this.emit("pwcm:save", { consent: this.getConsent(), revoked: revoked });
@@ -372,16 +420,26 @@
 			}
 		},
 
-		showToast: function () {
+		showToast: function (message) {
 			var timeout = typeof cfg.messageTimeout === "number" ? cfg.messageTimeout : 1500;
 			if (!this.el.toast || timeout === 0) return;
 			var toast = this.el.toast;
+			if (toast._pwcmTimer) clearTimeout(toast._pwcmTimer);
+			toast.textContent = message || toast.getAttribute("data-saved-message") || toast.textContent;
 			toast.hidden = false;
 			requestAnimationFrame(function () { toast.classList.add("is-open"); });
-			setTimeout(function () {
+			toast._pwcmTimer = setTimeout(function () {
 				toast.classList.remove("is-open");
-				setTimeout(function () { toast.hidden = true; }, 220);
+				toast._pwcmTimer = setTimeout(function () { toast.hidden = true; }, 220);
 			}, timeout);
+		},
+
+		updateConsentId: function () {
+			if (!this.el.consentId) return;
+			var visible = cfg.showConsentId !== false && this.valid && !this.ephemeral && !!this.consent.i;
+			this.el.consentId.hidden = !visible;
+			var code = this.el.consentId.querySelector("[data-consent-id]");
+			if (code) code.textContent = visible ? this.consent.i : "";
 		},
 
 		updateFab: function () {
@@ -447,7 +505,8 @@
 
 		logConsent: function () {
 			if (!cfg.logEndpoint || this.ephemeral) return;
-			var payload = JSON.stringify({ v: this.consent.v, g: this.consent.g });
+			if (!this.consent.i) return;
+			var payload = JSON.stringify({ i: this.consent.i, v: this.consent.v, g: this.consent.g });
 			try {
 				if (navigator.sendBeacon) {
 					navigator.sendBeacon(cfg.logEndpoint, new Blob([payload], { type: "application/json" }));
@@ -676,7 +735,7 @@
 		getConsent: function () {
 			var g = {};
 			for (var key in this.consent.g) g[key] = this.consent.g[key];
-			return { version: this.consent.v, storedAt: this.consent.t, valid: this.valid, categories: g };
+			return { id: this.consent.i || null, version: this.consent.v, storedAt: this.consent.t, valid: this.valid, categories: g };
 		},
 
 		hasConsent: function (cat) {
@@ -712,14 +771,27 @@
 		},
 
 		reset: function () {
-			document.cookie = (cfg.cookieName || "pwcm_consent") + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+			var name = cfg.cookieName || "pwcm_consent";
+			var secure = location.protocol === "https:" ? ";Secure" : "";
+			var expired = "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax" + secure;
+			// Always clear a possible legacy host-only value. When sharing is
+			// configured, also clear the parent-domain value.
+			document.cookie = name + expired;
+			if (cfg.cookieDomain) document.cookie = name + expired + ";Domain=" + cfg.cookieDomain;
 			var def = this.defaultConsent();
 			this.consent = def;
-			this.valid = false;
+			this.valid = this.gpcActive;
 			this.prevSnapshot = null;
+			this.enforceGpc();
 			this.syncCheckboxes();
 			this.updateBodyClasses();
-			this.show();
+			this.updateConsentId();
+			if (this.gpcActive) {
+				this.hideAll();
+				this.showToast(this.el.toast && this.el.toast.getAttribute("data-gpc-message"));
+			} else {
+				this.show();
+			}
 		},
 
 		refresh: function () {
@@ -761,6 +833,7 @@
 		}).then(function (regional) {
 			if (regional.model === "optin" || regional.model === "optout") cfg.model = regional.model;
 			cfg.autoShow = pageAllowsBanner && regional.autoShow !== false;
+			cfg.gpcSignal = regional.gpc === true;
 		}).catch(function () {
 			// Fail closed: retain the cached document's conservative opt-in
 			// model and visible banner.

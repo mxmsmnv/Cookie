@@ -565,6 +565,23 @@
 	word-break: break-all;
 }
 
+.pwcm-consent-id {
+	margin: 0.8em 0 0;
+	font-size: 0.78em;
+	line-height: 1.45;
+	opacity: 0.72;
+	word-break: break-all;
+}
+
+.pwcm-consent-id span {
+	font-weight: 600;
+}
+
+.pwcm-consent-id code {
+	font: inherit;
+	font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
 /* ---------------- toast ---------------- */
 
 .pwcm-toast {

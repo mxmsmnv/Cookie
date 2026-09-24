@@ -14,7 +14,7 @@ class ProcessCookie extends Process {
 		return [
 			'title' => 'Cookie: Design Studio',
 			'summary' => 'Interactive visual builder for the Cookie consent widget (colors, fonts, layout, icon) + consent log.',
-			'version' => '1.1.2',
+			'version' => '1.3.0',
 			'icon' => 'paint-brush',
 			'requires' => ['Cookie'],
 			'permission' => 'cookie-admin',
@@ -739,7 +739,7 @@ class ProcessCookie extends Process {
 			$this->_('Date'),
 			$this->_('Version'),
 			$this->_('Consent'),
-			$this->_('IP (hashed)'),
+			$this->_('Consent ID'),
 			$this->_('User agent'),
 		]);
 		foreach($rows as $row) {
@@ -756,7 +756,7 @@ class ProcessCookie extends Process {
 				$s->entities1($row['created']),
 				(int) $row['version'],
 				$badges,
-				'<code>' . substr($s->entities1($row['ip_hash']), 0, 12) . '…</code>',
+				'<code>' . $s->entities1($row['consent_id']) . '</code>',
 				$s->entities1($s->truncate((string) $row['ua'], 60)),
 			]);
 		}
@@ -1022,10 +1022,10 @@ class ProcessCookie extends Process {
 		header('Content-Type: text/csv; charset=utf-8');
 		header('Content-Disposition: attachment; filename="consent-log-' . date('Y-m-d') . '.csv"');
 		$fp = fopen('php://output', 'w');
-		fputcsv($fp, ['id', 'created', 'version', 'consent', 'ip_hash', 'user_agent'], ',', '"', '\\');
+		fputcsv($fp, ['id', 'created', 'version', 'consent', 'consent_id', 'user_agent'], ',', '"', '\\');
 		$query = $database->query('SELECT * FROM ' . Cookie::LOG_TABLE . ' ORDER BY id DESC');
 		while($row = $query->fetch(\PDO::FETCH_ASSOC)) {
-			fputcsv($fp, [$row['id'], $row['created'], $row['version'], $row['consent'], $row['ip_hash'], $row['ua']], ',', '"', '\\');
+			fputcsv($fp, [$row['id'], $row['created'], $row['version'], $row['consent'], $row['consent_id'], $row['ua']], ',', '"', '\\');
 		}
 		fclose($fp);
 		exit;
@@ -1083,7 +1083,7 @@ class ProcessCookie extends Process {
 
 		// export
 		$out .= "<h2>" . $this->_('Export') . '</h2>';
-		$out .= "<p>" . $this->_('Copy this JSON or download it, then import it on another site. Texts, categories, behavior, integrations, geo and design are included; the IP-hash salt and consent log are not.') . '</p>';
+		$out .= "<p>" . $this->_('Copy this JSON or download it, then import it on another site. Texts, categories, behavior, integrations, geo and design are included; consent-log records are not.') . '</p>';
 		$out .= "<p><a class='ui-button ui-state-default' href='./?download=1'><span class='ui-button-text'>" . $this->icon('download', 14) . ' ' . $this->_('Download settings.json') . '</span></a></p>';
 		$out .= "<textarea readonly rows='8' style='width:100%;font-family:monospace;font-size:12px' onclick='this.select()'>" . $s->entities1($export) . '</textarea>';
 

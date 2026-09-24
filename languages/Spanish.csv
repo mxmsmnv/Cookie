@@ -1,4 +1,5 @@
 en,es,description,file,hash
+"Consent ID","ID de consentimiento",,site/modules/Cookie/ProcessCookie.module.php,f87780f37a139b39f68f9fb23c6e95a1
 "%d consent records","%d registros de consentimiento",,site/modules/Cookie/ProcessCookie.module.php,05f962c67d997674818b2af30bd4bd83
 "Accept all","Aceptar todas",,site/modules/Cookie/ProcessCookie.module.php,3d0238bf1643e39636b1f5040af3bf6f
 Background,Fondo,,site/modules/Cookie/ProcessCookie.module.php,a9ded1e5ce5d75814730bb4caaf49419
@@ -24,7 +25,7 @@ Cookie,Cookie,,site/modules/Cookie/ProcessCookie.module.php,706f10887bbeb729378c
 "Copied to clipboard.","Copiado al portapapeles.",,site/modules/Cookie/ProcessCookie.module.php,e94f1e641d683543af6f76c6ced34e8a
 Copied.,Copiado.,,site/modules/Cookie/ProcessCookie.module.php,c9324191c2eee30ac122a07ab5aa4076
 "Copy HTML","Copiar HTML",,site/modules/Cookie/ProcessCookie.module.php,0fa4686b138146a4fcbdde09fdefd5b0
-"Copy this JSON or download it, then import it on another site. Texts, categories, behavior, integrations, geo and design are included; the IP-hash salt and consent log are not.","Copia este JSON o descárgalo, y luego impórtalo en otro sitio. Se incluyen textos, categorías, comportamiento, integraciones, geo y diseño; no se incluyen la sal del hash de IP ni el registro de consentimiento.",,site/modules/Cookie/ProcessCookie.module.php,a133d18afb83ef1d1f083bc3ed854619
+"Copy this JSON or download it, then import it on another site. Texts, categories, behavior, integrations, geo and design are included; consent-log records are not.","Copia o descarga este JSON e impórtalo en otro sitio. Los registros de consentimiento no se transfieren.",,site/modules/Cookie/ProcessCookie.module.php,51623aafc759ac9cb05d8add42a824b3
 "Corner radius","Radio de esquina",,site/modules/Cookie/ProcessCookie.module.php,158b3b19e8682e63add0e0434ee743a3
 Custom,Personalizado,,site/modules/Cookie/ProcessCookie.module.php,90589c47f06eb971d548591f23c285af
 "Custom choice","Elección personalizada",,site/modules/Cookie/ProcessCookie.module.php,40cf8ab2def23f7a5ed12cdfb477e869
