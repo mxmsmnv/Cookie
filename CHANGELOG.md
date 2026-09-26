@@ -2,6 +2,14 @@
 
 All notable changes to Cookie are documented here.
 
+## [1.3.1] - 2026-09-26
+
+### Fixed
+
+- Assign unique RFC 4122 consent IDs to legacy log rows in PHP instead of
+  calling MySQL's `UUID()` function, allowing clean install and upgrade on
+  SQLite and PostgreSQL while preserving MySQL behavior.
+
 ## [1.3.0] - 2026-09-24
 
 ### Added

@@ -12,7 +12,9 @@ if($module === false || $admin === false) {
 $required = [
 	'new log schema' => 'consent_id CHAR(36)',
 	'client ID insert' => '(created, version, consent, consent_id, ua)',
-	'legacy row migration' => "SET consent_id = UUID() WHERE consent_id = ''",
+	'legacy row selection' => "WHERE consent_id = '' ORDER BY id",
+	'portable ID assignment' => "SET consent_id = :consent_id WHERE id = :id AND consent_id = ''",
+	'RFC 4122 generator' => 'protected function newConsentId(): string',
 	'IP hash removal' => "DROP COLUMN ip_hash",
 ];
 foreach($required as $label => $needle) {
@@ -20,6 +22,11 @@ foreach($required as $label => $needle) {
 		fwrite(STDERR, "Missing consent-log migration marker: {$label}\n");
 		exit(1);
 	}
+}
+
+if(str_contains($module, 'UUID()')) {
+	fwrite(STDERR, "Consent-log migration still depends on the MySQL UUID() function\n");
+	exit(1);
 }
 
 if(str_contains($module, 'session->getIP()') || str_contains($module, "':ip' =>")) {

@@ -41,7 +41,7 @@ class Cookie extends WireData implements Module {
 		return [
 			'title' => 'Cookie',
 			'summary' => 'Privacy & cookie consent management: banner, category-based async loading of scripts/embeds, consent log, Google Consent Mode v2, visual widget builder.',
-			'version' => '1.3.0',
+			'version' => '1.3.1',
 			'author' => 'Cookie module contributors',
 			'href' => 'https://github.com/mxmsmnv/Cookie',
 			'icon' => 'shield',
@@ -1377,7 +1377,16 @@ class Cookie extends WireData implements Module {
 		if(!isset($columns['consent_id'])) {
 			$db->exec('ALTER TABLE ' . self::LOG_TABLE . " ADD consent_id CHAR(36) NOT NULL DEFAULT '' AFTER consent");
 		}
-		$db->exec('UPDATE ' . self::LOG_TABLE . " SET consent_id = UUID() WHERE consent_id = ''");
+		$legacyRows = $db->query('SELECT id FROM ' . self::LOG_TABLE . " WHERE consent_id = '' ORDER BY id");
+		$assignConsentId = $db->prepare(
+			'UPDATE ' . self::LOG_TABLE . " SET consent_id = :consent_id WHERE id = :id AND consent_id = ''"
+		);
+		while(($legacyId = $legacyRows->fetchColumn()) !== false) {
+			$assignConsentId->execute([
+				':consent_id' => $this->newConsentId(),
+				':id' => (int) $legacyId,
+			]);
+		}
 		if(isset($columns['ip_hash'])) {
 			$db->exec('ALTER TABLE ' . self::LOG_TABLE . ' DROP COLUMN ip_hash');
 		}
@@ -1387,6 +1396,14 @@ class Cookie extends WireData implements Module {
 			unset($configData['log_salt']);
 			$this->wire()->modules->saveConfig($this, $configData);
 		}
+	}
+
+	/** Generate a database-independent RFC 4122 version 4 identifier. */
+	protected function newConsentId(): string {
+		$bytes = random_bytes(16);
+		$bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+		$bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+		return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
 	}
 
 	public function ___uninstall() {
