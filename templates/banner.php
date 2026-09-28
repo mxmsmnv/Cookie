@@ -24,6 +24,9 @@ if(!empty($t['link_privacy'])) {
 if(!empty($t['link_imprint'])) {
 	$links .= "<a href=\"{$s->entities1($t['link_imprint'])}\">{$s->entities1($t['txt_imprint'])}</a>";
 }
+foreach(($t['extra_links'] ?? []) as $link) {
+	$links .= "<a href=\"{$s->entities1($link['url'])}\">{$s->entities1($link['label'])}</a>";
+}
 ?>
 <div class="<?php echo $rootClass; ?>" id="<?php echo $p; ?>-root"
 	data-layout="<?php echo $s->entities1($design['design_layout']); ?>"
@@ -80,8 +83,14 @@ if(!empty($t['link_imprint'])) {
 											<td>
 												<?php if($svc['provider']): ?><span><?php echo $s->entities1($svc['provider']); ?></span><?php endif; ?>
 												<?php if($svc['purpose']): ?><span><?php echo $s->entities1($svc['purpose']); ?></span><?php endif; ?>
-												<?php if($svc['duration']): ?><span><?php echo $s->entities1($svc['duration']); ?></span><?php endif; ?>
-												<?php if(count($svc['cookies'])): ?><code><?php echo $s->entities1(implode(', ', $svc['cookies'])); ?></code><?php endif; ?>
+												<?php if(!empty($svc['has_cookie_durations']) && count($svc['cookie_details'])): ?>
+													<?php foreach($svc['cookie_details'] as $cookie): ?>
+														<span><code><?php echo $s->entities1($cookie['name']); ?></code><?php if($cookie['duration']): ?> — <?php echo $s->entities1($cookie['duration']); ?><?php endif; ?></span>
+													<?php endforeach; ?>
+												<?php else: ?>
+													<?php if($svc['duration']): ?><span><?php echo $s->entities1($svc['duration']); ?></span><?php endif; ?>
+													<?php if(count($svc['cookies'])): ?><code><?php echo $s->entities1(implode(', ', $svc['cookies'])); ?></code><?php endif; ?>
+												<?php endif; ?>
 											</td>
 										</tr>
 									<?php endforeach; ?>
@@ -98,7 +107,7 @@ if(!empty($t['link_imprint'])) {
 			<button type="button" class="<?php echo $p; ?>-btn <?php echo $p; ?>-btn-secondary" data-action="reject"><?php echo $s->entities1($t['txt_btn_reject']); ?></button>
 		</div>
 		<?php if($links): ?><div class="<?php echo $p; ?>-links"><?php echo $links; ?></div><?php endif; ?>
-		<?php if($module->show_consent_id && $module->enable_logging): ?>
+		<?php if($module->show_consent_id): ?>
 			<p class="<?php echo $p; ?>-consent-id" hidden>
 				<span><?php echo $s->entities1($t['txt_consent_id']); ?>:</span>
 				<code data-consent-id></code>

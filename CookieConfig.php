@@ -102,6 +102,7 @@ class CookieConfig extends ModuleConfig {
 			'link_imprint' => '',
 			'link_privacy_page' => 0,
 			'link_imprint_page' => 0,
+			'extra_links_json' => '',
 			'policy_intro' => $this->_('This Cookie Policy explains what cookies are, which cookies this website uses, why we use them, and how you can control them. It should be read together with our Privacy Policy.'),
 
 			// design (managed via ProcessCookie builder)
@@ -387,8 +388,8 @@ class CookieConfig extends ModuleConfig {
 		$f = $modules->get('InputfieldTextarea');
 		$f->name = 'services_json';
 		$f->label = $this->_('Services (JSON)');
-		$f->description = $this->_('List of services shown in the “Details” section of each category. Cookie names listed here are deleted when consent is revoked. Use the picker above or edit the JSON directly.');
-		$f->notes = $this->_('Format: [{"name":"Google Analytics","category":"statistics","provider":"Google LLC","purpose":"Traffic measurement","duration":"2 years","cookies":["_ga","_gid"]}]');
+		$f->description = $this->_('List of services shown in the “Details” section of each category. Cookie names listed here are deleted when consent is revoked. Use the picker above or edit the JSON directly. Each cookie can optionally have its own storage duration.');
+		$f->notes = $this->_('Legacy: [{"name":"Google Analytics","category":"statistics","duration":"2 years","cookies":["_ga","_gid"]}]. Per-cookie retention: [{"name":"Google Analytics","category":"statistics","cookies":[{"name":"_ga","duration":"2 years"},{"name":"_gid","duration":"24 hours"}]}]');
 		$f->rows = 8;
 		$f->collapsed = Inputfield::collapsedNo;
 		$saved = $modules->getConfig('Cookie');
@@ -507,6 +508,29 @@ class CookieConfig extends ModuleConfig {
 			$fs->add($f);
 		}
 
+		$f = $modules->get('InputfieldTextarea');
+		$f->name = 'extra_links_json';
+		$f->label = $this->_('Additional legal links (JSON)');
+		$f->description = $this->_('Optional links displayed next to the Privacy policy and Imprint links. Labels are used exactly as entered.');
+		$f->notes = $this->_('Format: [{"label":"Accessibility statement","url":"/accessibility/"}]. URLs may be root-relative, anchors, or absolute HTTP(S) URLs.');
+		$f->rows = 4;
+		$f->collapsed = Inputfield::collapsedBlank;
+		$extraLinksRaw = isset($saved['extra_links_json']) ? trim((string) $saved['extra_links_json']) : '';
+		if($extraLinksRaw) {
+			$extraLinks = json_decode($extraLinksRaw, true);
+			if(!is_array($extraLinks)) {
+				$f->error($this->_('Additional legal links contain invalid JSON.'));
+			} else {
+				foreach($extraLinks as $link) {
+					if(!is_array($link) || trim((string) ($link['label'] ?? '')) === '' || trim((string) ($link['url'] ?? '')) === '') {
+						$f->error($this->_('Every additional legal link must contain a non-empty label and URL.'));
+						break;
+					}
+				}
+			}
+		}
+		$fs->add($f);
+
 		$inputfields->add($fs);
 
 		/* ---------- Behavior ---------- */
@@ -621,7 +645,7 @@ class CookieConfig extends ModuleConfig {
 		$f = $modules->get('InputfieldCheckbox');
 		$f->name = 'show_consent_id';
 		$f->label = $this->_('Show the consent ID in preferences');
-		$f->description = $this->_('Lets visitors match their current saved choice to a consent-log record. The identifier is informational and is not authentication.');
+		$f->description = $this->_('Shows the random identifier stored with the visitor’s current choice. When consent logging is enabled, it also matches the corresponding log record. The identifier is informational and is not authentication.');
 		$f->columnWidth = 50;
 		$fs->add($f);
 

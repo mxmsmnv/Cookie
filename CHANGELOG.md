@@ -4,8 +4,17 @@ All notable changes to Cookie are documented here.
 
 ## [1.3.1] - 2026-09-26
 
+### Added
+
+- Added optional additional legal links configured as JSON and displayed next
+  to the Privacy policy and Imprint links.
+- Added per-cookie storage durations in service definitions while preserving
+  the legacy service-level duration and cookie-name list format.
+
 ### Fixed
 
+- Display the saved consent ID when requested even if consent logging is
+  disabled; logging now controls storage only, not frontend visibility.
 - Assign unique RFC 4122 consent IDs to legacy log rows in PHP instead of
   calling MySQL's `UUID()` function, allowing clean install and upgrade on
   SQLite and PostgreSQL while preserving MySQL behavior.

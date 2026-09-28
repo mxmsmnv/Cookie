@@ -328,7 +328,45 @@ class Cookie extends WireData implements Module {
 		foreach($keys as $key) {
 			$t[$key] = (strpos($key, 'link_') === 0) ? $this->resolveLink($key) : $this->txt($key);
 		}
+		$t['extra_links'] = $this->getExtraLinks();
 		return $t;
+	}
+
+	/**
+	 * Additional legal/footer links declared in extra_links_json.
+	 * Invalid or unsafe entries are ignored rather than rendered.
+	 * @return array of ['label', 'url']
+	 */
+	public function getExtraLinks() {
+		return $this->parseExtraLinksJson((string) $this->extra_links_json);
+	}
+
+	/** @return array of normalized ['label', 'url'] entries */
+	protected function parseExtraLinksJson($raw) {
+		$raw = trim((string) $raw);
+		if($raw === '') return [];
+		$data = json_decode($raw, true);
+		if(!is_array($data)) return [];
+		$links = [];
+		foreach($data as $item) {
+			if(!is_array($item)) continue;
+			$label = trim((string) ($item['label'] ?? ''));
+			$url = $this->normalizeExtraLinkUrl((string) ($item['url'] ?? ''));
+			if($label === '' || $url === '') continue;
+			$links[] = ['label' => $label, 'url' => $url];
+		}
+		return $links;
+	}
+
+	/** Accept local paths/anchors and explicit HTTP(S), reject ambiguous or active URLs. */
+	protected function normalizeExtraLinkUrl($url) {
+		$url = trim((string) $url);
+		if($url === '' || preg_match('//u', $url) !== 1 || preg_match('/[\x00-\x1F\x7F]/', $url)) return '';
+		if($url[0] === '#') return $url;
+		if($url[0] === '/' && substr($url, 0, 2) !== '//') return $url;
+		if(!filter_var($url, FILTER_VALIDATE_URL)) return '';
+		$scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+		return ($scheme === 'http' || $scheme === 'https') ? $url : '';
 	}
 
 	/**
@@ -431,7 +469,8 @@ class Cookie extends WireData implements Module {
 
 	/**
 	 * Declared services from the services_json config field.
-	 * Each: {name, category, provider, purpose, duration, cookies:[names]}
+	 * Each: {name, category, provider, purpose, duration,
+	 *        cookies:[names|{name,duration}]}
 	 * @return array
 	 */
 	public function getServices() {
@@ -442,16 +481,49 @@ class Cookie extends WireData implements Module {
 		$services = [];
 		foreach($data as $item) {
 			if(!is_array($item) || empty($item['name'])) continue;
+			$duration = isset($item['duration']) ? trim((string) $item['duration']) : '';
+			$cookieData = $this->normalizeServiceCookies(
+				isset($item['cookies']) && is_array($item['cookies']) ? $item['cookies'] : [],
+				$duration
+			);
 			$services[] = [
 				'name' => (string) $item['name'],
 				'category' => isset($item['category']) ? (string) $item['category'] : 'necessary',
 				'provider' => isset($item['provider']) ? (string) $item['provider'] : '',
 				'purpose' => isset($item['purpose']) ? (string) $item['purpose'] : '',
-				'duration' => isset($item['duration']) ? (string) $item['duration'] : '',
-				'cookies' => isset($item['cookies']) && is_array($item['cookies']) ? array_values(array_map('strval', $item['cookies'])) : [],
+				'duration' => $duration,
+				'cookies' => $cookieData['names'],
+				'cookie_details' => $cookieData['details'],
+				'has_cookie_durations' => $cookieData['explicit'],
 			];
 		}
 		return $services;
+	}
+
+	/** Normalize legacy cookie-name strings and per-cookie retention objects. */
+	protected function normalizeServiceCookies(array $cookies, $fallbackDuration = '') {
+		$names = [];
+		$details = [];
+		$seen = [];
+		$explicit = false;
+		$fallbackDuration = trim((string) $fallbackDuration);
+		foreach($cookies as $cookie) {
+			$duration = $fallbackDuration;
+			$detailed = is_array($cookie);
+			if($detailed) {
+				$name = trim((string) ($cookie['name'] ?? ''));
+				$ownDuration = trim((string) ($cookie['duration'] ?? ''));
+				if($ownDuration !== '') $duration = $ownDuration;
+			} else {
+				$name = trim((string) $cookie);
+			}
+			if($name === '' || isset($seen[$name])) continue;
+			if($detailed) $explicit = true;
+			$seen[$name] = true;
+			$names[] = $name;
+			$details[] = ['name' => $name, 'duration' => $duration];
+		}
+		return ['names' => $names, 'details' => $details, 'explicit' => $explicit];
 	}
 
 	/* ==================================================================
@@ -668,7 +740,7 @@ class Cookie extends WireData implements Module {
 			'geoConfigUrl' => ($this->geo_mode || $this->respect_gpc)
 				? rtrim($this->wire()->config->urls->root, '/') . self::GEO_CONFIG_ENDPOINT
 				: '',
-			'showConsentId' => (bool) $this->show_consent_id && (bool) $this->enable_logging,
+			'showConsentId' => (bool) $this->show_consent_id,
 			'bodyClasses' => (bool) $this->body_classes,
 			'observe' => (bool) $this->observe_dom,
 			'reloadOnRevoke' => (bool) $this->reload_on_revoke,
@@ -1260,11 +1332,21 @@ class Cookie extends WireData implements Module {
 					$cookies = count($svc['cookies'])
 						? '<code>' . implode('</code>, <code>', array_map([$s, 'entities1'], $svc['cookies'])) . '</code>'
 						: '<span class="' . $p . '-policy-muted">' . $s->entities1($this->_('none')) . '</span>';
+					$retention = $s->entities1($svc['duration']);
+					if(!empty($svc['has_cookie_durations']) && count($svc['cookie_details'])) {
+						$retentionRows = [];
+						foreach($svc['cookie_details'] as $cookie) {
+							$row = '<code>' . $s->entities1($cookie['name']) . '</code>';
+							if($cookie['duration'] !== '') $row .= ': ' . $s->entities1($cookie['duration']);
+							$retentionRows[] = $row;
+						}
+						$retention = implode('<br>', $retentionRows);
+					}
 					$out .= '<tr>' .
 						'<th scope="row">' . $s->entities1($svc['name']) . '</th>' .
 						'<td>' . $s->entities1($svc['provider']) . '</td>' .
 						'<td>' . $s->entities1($svc['purpose']) . '</td>' .
-						'<td>' . $s->entities1($svc['duration']) . '</td>' .
+						'<td>' . $retention . '</td>' .
 						'<td>' . $cookies . '</td>' .
 						'</tr>';
 				}

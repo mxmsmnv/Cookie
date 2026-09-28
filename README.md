@@ -316,8 +316,9 @@ records are never transferred. Programmatic: `$cookie->exportSettings()` /
 Enable in module config (Integrations). Records contain a random consent ID,
 timestamp, consent version, granted categories and truncated user agent. Cookie
 does not read or hash the visitor IP. The current consent ID can optionally be
-shown in the preferences window so a visitor can reference the matching record.
-It is an informational identifier, not authentication. View/export: **Setup >
+shown in the preferences window even when logging is disabled. With logging
+enabled, a visitor can use it to reference the matching record. It is an
+informational identifier, not authentication. View/export: **Setup >
 Cookie > Consent log**. Retention is configurable; old records are purged
 automatically. The endpoint (`/pwcm-cl/`) accepts only small JSON POST bodies.
 
@@ -335,13 +336,30 @@ before upgrading if those legacy hashes must be retained for an external audit.
 		"provider": "Google LLC",
 		"purpose": "Traffic measurement",
 		"duration": "2 years",
-		"cookies": ["_ga", "_gid", "_gat"]
+		"cookies": [
+			{"name": "_ga", "duration": "2 years"},
+			{"name": "_gid", "duration": "24 hours"},
+			{"name": "_gat", "duration": "1 minute"}
+		]
 	}
 ]
 ```
 
-Shown under "Details" of the category in the preferences window. On revocation the
-listed cookie names are deleted (first-party) and the page reloads (configurable).
+Shown under "Details" of the category in the preferences window. Each cookie may
+use an object with its own `duration`; the legacy string form
+`"cookies": ["_ga", "_gid"]` and service-level `duration` remain supported. On
+revocation the listed cookie names are deleted (first-party) and the page reloads
+(configurable).
+
+Additional links can be placed next to Privacy policy and Imprint in module
+settings with JSON such as:
+
+```json
+[{"label": "Accessibility statement", "url": "/accessibility/"}]
+```
+
+Root-relative paths, anchors and absolute HTTP(S) URLs are accepted. Unsafe URL
+schemes and malformed entries are ignored.
 
 ## Troubleshooting
 

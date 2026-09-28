@@ -7,7 +7,7 @@ const { chromium } = require("playwright");
 const cookieJs = fs.readFileSync(path.join(__dirname, "..", "assets", "cookie.js"));
 const logged = [];
 
-function html() {
+function html({ logging = true } = {}) {
 	const config = {
 		prefix: "pwcm",
 		cookieName: "pwcm_consent",
@@ -27,7 +27,7 @@ function html() {
 		observe: false,
 		reloadOnRevoke: false,
 		consentMode: false,
-		logEndpoint: "/pwcm-cl/",
+		logEndpoint: logging ? "/pwcm-cl/" : "",
 		categories: [
 			{ key: "necessary", label: "Necessary", required: true },
 			{ key: "statistics", label: "Statistics", required: false },
@@ -87,7 +87,8 @@ async function main() {
 			return;
 		}
 		response.writeHead(200, { "content-type": "text/html" });
-		response.end(html());
+		const requestUrl = new URL(request.url, "http://127.0.0.1");
+		response.end(html({ logging: requestUrl.searchParams.get("logging") !== "0" }));
 	});
 
 	await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
@@ -111,6 +112,21 @@ async function main() {
 		assert.equal(logged.at(-1).i, firstConsent.id);
 		assert.equal(Object.hasOwn(logged.at(-1), "ip"), false);
 		await normal.close();
+
+		const withoutLogging = await browser.newContext();
+		const withoutLoggingPage = await withoutLogging.newPage();
+		const logCountBefore = logged.length;
+		await withoutLoggingPage.goto(`${url}?logging=0`);
+		await withoutLoggingPage.locator('[data-action="accept-all"]').click();
+		await withoutLoggingPage.waitForFunction(() => window.pwCookie.getConsent().id !== null);
+		const unloggedConsent = await withoutLoggingPage.evaluate(() => window.pwCookie.getConsent());
+		assert.match(unloggedConsent.id, /^[0-9a-f-]{36}$/);
+		await withoutLoggingPage.locator('.pwcm-fab').click();
+		assert.equal(await withoutLoggingPage.locator('[data-consent-id]').textContent(), unloggedConsent.id);
+		assert.equal(await withoutLoggingPage.locator('.pwcm-consent-id').isVisible(), true);
+		await withoutLoggingPage.waitForTimeout(150);
+		assert.equal(logged.length, logCountBefore);
+		await withoutLogging.close();
 
 		const headerGpc = await browser.newContext({ extraHTTPHeaders: { "Sec-GPC": "1" } });
 		const headerPage = await headerGpc.newPage();
