@@ -2,6 +2,25 @@
 
 All notable changes to Cookie are documented here.
 
+## [1.3.3] - 2026-09-30
+
+### Fixed
+
+- Let the Design Studio preview controls wrap into two bounded rows on narrow
+  admin screens so device/theme toggles and the preview browser no longer make
+  the ProcessWire page wider than a mobile viewport.
+
+## [1.3.2] - 2026-09-30
+
+### Fixed
+
+- Keep the dimming overlay below the consent banner and preferences window at
+  responsive tablet widths by isolating the widget's stacking context and
+  defining a local layer order for all widget surfaces. The overlay no longer
+  uses backdrop-filter, which could be composited across the foreground layer,
+  and foreground windows remain fully opaque throughout their entrance
+  animation so contrast evaluation never samples a dimmed intermediate state.
+
 ## [1.3.1] - 2026-09-26
 
 ### Added

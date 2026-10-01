@@ -1093,3 +1093,53 @@
 		min-height: 480px;
 	}
 }
+
+@media (max-width: 600px) {
+	.pwb,
+	.pwb-controls,
+	.pwb-panel,
+	.pwb-stage,
+	.pwb-browser,
+	.pwb-viewport {
+		min-width: 0;
+		max-width: 100%;
+	}
+
+	.pwb {
+		gap: 20px;
+	}
+
+	.pwb-tabs-row {
+		align-items: stretch;
+		flex-wrap: wrap;
+	}
+
+	.pwb-tabs {
+		flex: 1 1 100%;
+		min-width: 0;
+	}
+
+	.pwb-tab {
+		flex: 1 1 0;
+		min-width: 0;
+		padding-inline: 10px;
+	}
+
+	.pwb-view-toggles {
+		flex: 1 1 100%;
+		justify-content: flex-end;
+		min-width: 0;
+	}
+
+	.pwb-browser-bar span {
+		min-width: 0;
+		overflow: hidden;
+		padding-inline: 12px;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.pwb-groups {
+		padding: 20px 18px 22px;
+	}
+}

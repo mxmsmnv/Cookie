@@ -14,7 +14,7 @@ class ProcessCookie extends Process {
 		return [
 			'title' => 'Cookie: Design Studio',
 			'summary' => 'Interactive visual builder for the Cookie consent widget (colors, fonts, layout, icon) + consent log.',
-			'version' => '1.3.1',
+			'version' => '1.3.3',
 			'icon' => 'paint-brush',
 			'requires' => ['Cookie'],
 			'permission' => 'cookie-admin',

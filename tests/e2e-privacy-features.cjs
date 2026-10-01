@@ -5,6 +5,7 @@ const path = require("node:path");
 const { chromium } = require("playwright");
 
 const cookieJs = fs.readFileSync(path.join(__dirname, "..", "assets", "cookie.js"));
+const cookieCss = fs.readFileSync(path.join(__dirname, "..", "assets", "cookie.css"));
 const logged = [];
 
 function html({ logging = true } = {}) {
@@ -35,8 +36,8 @@ function html({ logging = true } = {}) {
 		],
 		cookiesToClear: {}
 	};
-	return `<!doctype html><html><body>
-		<div id="pwcm-root" class="pwcm-root" data-overlay="0">
+	return `<!doctype html><html><head><link rel="stylesheet" href="/cookie.css"></head><body>
+		<div id="pwcm-root" class="pwcm-root" data-layout="bar" data-position="bottom" data-overlay="1">
 			<div class="pwcm-overlay" hidden></div>
 			<section class="pwcm-banner" hidden>
 				<button data-action="accept-all">Accept all</button>
@@ -61,6 +62,11 @@ function html({ logging = true } = {}) {
 
 async function main() {
 	const server = http.createServer((request, response) => {
+		if(request.url === "/cookie.css") {
+			response.writeHead(200, { "content-type": "text/css" });
+			response.end(cookieCss);
+			return;
+		}
 		if(request.url === "/cookie.js") {
 			response.writeHead(200, { "content-type": "text/javascript" });
 			response.end(cookieJs);
@@ -97,9 +103,37 @@ async function main() {
 	try {
 		browser = await chromium.launch({ headless: true });
 
-		const normal = await browser.newContext();
+		const normal = await browser.newContext({ viewport: { width: 834, height: 1112 } });
 		const normalPage = await normal.newPage();
 		await normalPage.goto(url);
+		await normalPage.locator('.pwcm-banner.is-open').waitFor();
+		const layers = await normalPage.evaluate(() => {
+			const root = document.querySelector('.pwcm-root');
+			const overlay = document.querySelector('.pwcm-overlay');
+			const banner = document.querySelector('.pwcm-banner');
+			const rect = banner.getBoundingClientRect();
+			const stack = document.elementsFromPoint(rect.left + 10, rect.top + 10);
+			return {
+				rootPosition: getComputedStyle(root).position,
+				rootIsolation: getComputedStyle(root).isolation,
+				rootZIndex: getComputedStyle(root).zIndex,
+				overlayZIndex: Number(getComputedStyle(overlay).zIndex),
+				overlayBackdropFilter: getComputedStyle(overlay).backdropFilter,
+				bannerZIndex: Number(getComputedStyle(banner).zIndex),
+				bannerOpacity: getComputedStyle(banner).opacity,
+				bannerAboveOverlay: stack.indexOf(banner) < stack.indexOf(overlay)
+			};
+		});
+		assert.deepEqual(layers, {
+			rootPosition: "relative",
+			rootIsolation: "isolate",
+			rootZIndex: "99990",
+			overlayZIndex: 0,
+			overlayBackdropFilter: "none",
+			bannerZIndex: 2,
+			bannerOpacity: "1",
+			bannerAboveOverlay: true
+		});
 		await normalPage.locator('[data-action="accept-all"]').click();
 		await normalPage.waitForFunction(() => window.pwCookie.getConsent().id !== null);
 		const firstConsent = await normalPage.evaluate(() => window.pwCookie.getConsent());

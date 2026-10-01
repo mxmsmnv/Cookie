@@ -41,7 +41,7 @@ class Cookie extends WireData implements Module {
 		return [
 			'title' => 'Cookie',
 			'summary' => 'Privacy & cookie consent management: banner, category-based async loading of scripts/embeds, consent log, Google Consent Mode v2, visual widget builder.',
-			'version' => '1.3.1',
+			'version' => '1.3.3',
 			'author' => 'Cookie module contributors',
 			'href' => 'https://github.com/mxmsmnv/Cookie',
 			'icon' => 'shield',
